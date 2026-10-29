@@ -776,9 +776,14 @@ async function browseDirectory() {
 async function submitServer() {
   const name = document.getElementById('f-name').value.trim();
   const source = document.getElementById('f-src').value.trim();
+  const source_type = document.querySelector('input[name="stype"]:checked').value;
   if (!name) { toast('Server name is required', 'err'); return; }
   if (!source) { toast('Source is required', 'err'); return; }
-  const body = {name, source_type: document.querySelector('input[name="stype"]:checked').value, source, mode: 'full'};
+  // Catch common mistake: npm package name entered as a local path
+  if (source_type === 'path' && /^@?[a-z0-9][\w.-]*\//.test(source)) {
+    toast('This looks like an NPM package name. Change Source Type to "NPM Package".', 'err'); return;
+  }
+  const body = {name, source_type, source, mode: 'full'};
   const r = await fetch('/api/servers', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
   if (r.ok) {
     toast(`"${name}" added`, 'ok');
@@ -962,6 +967,8 @@ async function loadResults() {
     }
   } catch(e) {
     console.error(e);
+    document.getElementById('empty-results').style.display = '';
+    document.getElementById('empty-results').innerHTML = '<div style="font-size:32px">⚠️</div><p style="color:var(--red)">Could not load results.<br>Check the Live Output tab for scan errors.</p>';
   }
 }
 
@@ -987,6 +994,7 @@ function showTab(name) {
     t.classList.toggle('active', ['out','res'][i] === name));
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   document.getElementById('pane-'+name).classList.add('active');
+  if (name === 'res') loadResults();
 }
 
 // ── toast ──────────────────────────────────────────────────────────────────
