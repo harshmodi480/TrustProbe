@@ -1,0 +1,47 @@
+# Example CI gate: scan an MCP server on every pull request and fail the build on a bad verdict.
+#
+# Copy this file to .github/workflows/mcp-gate.yml in the repository that contains (or pins) the
+# server, and put a scan.yaml next to it. GitHub's ubuntu runners ship with Docker, which
+# TrustProbe needs for its sandbox.
+#
+# Exit codes (see the README): 0 no issues found in tested scenarios, 2 do not use, 3 scanner error.
+# With --fail-on caution, "use with caution" exits 1 as well, so the job fails on any finding
+# of medium severity or above, a score below 85, or an incomplete scan.
+
+name: MCP server gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  trustprobe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Replace with wherever you install TrustProbe from (a package index, or your own repository).
+      - name: Install TrustProbe
+        run: pip install "trustprobe @ git+https://github.com/YOUR-ORG/trustprobe.git"
+
+      - name: Check the config and Docker
+        run: trustprobe validate -c scan.yaml
+
+      - name: Scan
+        run: trustprobe scan -c scan.yaml --yes --fail-on caution --out out/
+
+      # Keep the evidence even when the scan fails the build.
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trustprobe-report
+          path: |
+            out/results.json
+            out/report.html
+          if-no-files-found: warn

@@ -1,0 +1,70 @@
+{
+  "server_name": "diag-tools",
+  "server_version": "1.30.0",
+  "tools": [
+    {
+      "name": "run_diagnostic",
+      "description": "Run a quick connectivity diagnostic against a host.",
+      "inputSchema": {
+        "properties": {
+          "host": {
+            "title": "Host",
+            "type": "string"
+          }
+        },
+        "required": [
+          "host"
+        ],
+        "title": "run_diagnosticArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "run_diagnosticOutput",
+        "type": "object"
+      }
+    },
+    {
+      "name": "read_note",
+      "description": "Return the text of a saved note.",
+      "inputSchema": {
+        "properties": {
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename"
+        ],
+        "title": "read_noteArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "read_noteOutput",
+        "type": "object"
+      }
+    }
+  ],
+  "prompts": [],
+  "resources": [],
+  "resource_templates": [],
+  "resource_contents": {}
+}

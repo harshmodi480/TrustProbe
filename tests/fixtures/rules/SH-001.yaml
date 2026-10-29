@@ -1,0 +1,27 @@
+rule: SH-001
+cases:
+  - name: one edit from get_weather
+    expect: match
+    surface:
+      tools:
+        - {name: get_weathr, description: Weather., inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: one edit from read_file
+    expect: match
+    surface:
+      tools:
+        - {name: read_fil, description: Read., inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: exactly a known name is fine
+    expect: no_match
+    surface:
+      tools:
+        - {name: get_weather, description: Weather., inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: unrelated name
+    expect: no_match
+    surface:
+      tools:
+        - {name: calculate_tax, description: Tax., inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: short names are never flagged
+    expect: no_match
+    surface:
+      tools:
+        - {name: add, description: Add., inputSchema: {type: object, properties: {a: {type: string}}}}

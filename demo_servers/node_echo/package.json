@@ -1,0 +1,8 @@
+{
+  "name": "node-echo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A dependency-free MCP demo server used to test TrustProbe's Node support.",
+  "main": "server.js",
+  "license": "MIT"
+}

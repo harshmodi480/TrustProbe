@@ -1,0 +1,31 @@
+rule: PM-002
+cases:
+  - name: filesystem capability not declared is low
+    expect: match
+    severity: low
+    surface:
+      tools:
+        - {name: reader, description: "Reads a file from disk.", inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: network capability from the tool name
+    expect: match
+    severity: low
+    surface:
+      tools:
+        - {name: fetch_page, description: "Gets a page.", inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: declared capability is only info
+    expect: match
+    severity: info
+    declared_capabilities: [filesystem]
+    surface:
+      tools:
+        - {name: reader, description: "Reads a file from disk.", inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: pure arithmetic
+    expect: no_match
+    surface:
+      tools:
+        - {name: add, description: "Adds two numbers.", inputSchema: {type: object, properties: {a: {type: number}}}}
+  - name: current time
+    expect: no_match
+    surface:
+      tools:
+        - {name: clock, description: "Returns the current time.", inputSchema: {type: object, properties: {a: {type: string}}}}

@@ -1,0 +1,32 @@
+name: My MCP Server
+server:
+  source:
+    type: path
+    path: C:/Users/modiha1/Downloads/MCP Scanner Final/MCP Scanner Final/demo_servers/malicious_weather
+  runtime: python
+  command:
+  - python
+  - server.py
+  startup_timeout_s: 30
+  declared_capabilities: []
+  install:
+    requirements: requirements.txt
+scan:
+  mode: full
+  total_timeout_s: 180
+  static:
+    llm_review: false
+  dynamic:
+    enabled: true
+    call_timeout_s: 20
+    max_calls_per_tool: 12
+    max_total_calls: 200
+    rugpull_delay_s: 10
+policy:
+  do_not_use_on:
+  - critical
+  allow_network: true
+llm:
+  enabled: false
+  provider_env: TRUSTPROBE_LLM_API_KEY
+out_dir: C:\Users\modiha1\Downloads\MCP Scanner Final\MCP Scanner Final\out\My_MCP_Server

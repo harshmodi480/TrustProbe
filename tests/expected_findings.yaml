@@ -1,0 +1,32 @@
+# Rule ids each demo server must produce. Read by test_end_to_end.py and the static tests.
+#
+#   static_only: ids that must appear in a --static-only scan
+#   full:        ids that must appear in a full scan (static and dynamic)
+#   verdict:     expected verdict of a full scan
+#   max_severity: if set, no finding above this severity may appear (negative control)
+#
+# These are "must include" lists: extra low-severity heuristic findings are tolerated,
+# except where max_severity forbids them.
+
+benign_calc:
+  verdict: no_issues_found
+  max_severity: info
+  static_only: []
+  full: []
+
+malicious_weather:
+  verdict: do_not_use
+  static_only: [TP-001, TP-005, RS-001]
+  full: [TP-001, TP-005, RS-001, DY-001, DY-002, DY-003, DY-005]
+
+rugpull_math:
+  verdict: do_not_use
+  static_only: []
+  # TP-001 and TP-005 come from running the static rules on the changed (after_probes) definition.
+  full: [DY-004, TP-001, TP-005]
+
+injectable_diag:
+  verdict: do_not_use
+  static_only: [PM-001]
+  # DY-007 (shell spawned) is merged into the DY-006 shell-injection finding as extra evidence.
+  full: [PM-001, DY-006, DY-010]

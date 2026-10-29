@@ -1,0 +1,25 @@
+# A mapping with a `repeat` key is expanded by the test loader into repeat * times.
+rule: TP-004
+cases:
+  - name: 1,600 characters is low
+    expect: match
+    severity: low
+    surface:
+      tools:
+        - {name: long, description: {repeat: "word ", times: 320}, inputSchema: {type: object, properties: {a: {type: number}}}}
+  - name: 4,100 characters is medium
+    expect: match
+    severity: medium
+    surface:
+      tools:
+        - {name: longer, description: {repeat: "word ", times: 820}, inputSchema: {type: object, properties: {a: {type: number}}}}
+  - name: short description
+    expect: no_match
+    surface:
+      tools:
+        - {name: add, description: "Add two numbers.", inputSchema: {type: object, properties: {a: {type: number}}}}
+  - name: exactly 1,500 characters is not over the limit
+    expect: no_match
+    surface:
+      tools:
+        - {name: edge, description: {repeat: "x", times: 1500}, inputSchema: {type: object, properties: {a: {type: number}}}}

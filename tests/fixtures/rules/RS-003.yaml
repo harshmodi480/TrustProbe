@@ -1,0 +1,27 @@
+rule: RS-003
+cases:
+  - name: private key header
+    expect: match
+    surface:
+      resources: [{uri: "x://k", name: k}]
+      resource_contents: {"x://k": "-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----"}
+  - name: AWS access key id
+    expect: match
+    surface:
+      resources: [{uri: "x://a", name: a}]
+      resource_contents: {"x://a": "access = AKIAABCDEFGHIJKLMNOP"}
+  - name: GitHub token
+    expect: match
+    surface:
+      resources: [{uri: "x://g", name: g}]
+      resource_contents: {"x://g": "token ghp_abcdefghijklmnopqrstuvwxyz0123456789"}
+  - name: the word key in prose
+    expect: no_match
+    surface:
+      resources: [{uri: "x://p", name: p}]
+      resource_contents: {"x://p": "Use a key to unlock the door."}
+  - name: lowercase akia and short sk- prefix
+    expect: no_match
+    surface:
+      resources: [{uri: "x://q", name: q}]
+      resource_contents: {"x://q": "akiaabcdefghijklmnop and sk-short"}

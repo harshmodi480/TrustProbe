@@ -1,0 +1,39 @@
+rule: PM-001
+cases:
+  - name: unconstrained command parameter is high
+    expect: match
+    severity: high
+    surface:
+      tools:
+        - {name: run, description: Run.,  inputSchema: {type: object, properties: {command: {type: string}}}}
+  - name: unconstrained host parameter is medium
+    expect: match
+    severity: medium
+    surface:
+      tools:
+        - {name: ping, description: Ping., inputSchema: {type: object, properties: {host: {type: string}}}}
+  - name: optional string (anyOf) is still unconstrained
+    expect: match
+    surface:
+      tools:
+        - {name: open, description: Open., inputSchema: {type: object, properties: {path: {anyOf: [{type: string}, {type: "null"}]}}}}
+  - name: command limited by an enum
+    expect: no_match
+    surface:
+      tools:
+        - {name: run, description: Run., inputSchema: {type: object, properties: {command: {type: string, enum: [start, stop]}}}}
+  - name: host with a format
+    expect: no_match
+    surface:
+      tools:
+        - {name: ping, description: Ping., inputSchema: {type: object, properties: {host: {type: string, format: hostname}}}}
+  - name: path with a pattern
+    expect: no_match
+    surface:
+      tools:
+        - {name: open, description: Open., inputSchema: {type: object, properties: {path: {type: string, pattern: "^[a-z]+$"}}}}
+  - name: harmless parameter name
+    expect: no_match
+    surface:
+      tools:
+        - {name: weather, description: Weather., inputSchema: {type: object, properties: {city: {type: string}}}}

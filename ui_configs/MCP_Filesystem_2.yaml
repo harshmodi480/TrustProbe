@@ -1,0 +1,31 @@
+name: MCP Filesystem 2
+server:
+  source:
+    type: npm
+    package: '@modelcontextprotocol/server-filesystem'
+  runtime: node
+  command:
+  - node
+  - dist/index.js
+  - /tmp
+  startup_timeout_s: 30
+  declared_capabilities: []
+scan:
+  mode: full
+  total_timeout_s: 180
+  static:
+    llm_review: false
+  dynamic:
+    enabled: true
+    call_timeout_s: 20
+    max_calls_per_tool: 12
+    max_total_calls: 200
+    rugpull_delay_s: 10
+policy:
+  do_not_use_on:
+  - critical
+  allow_network: true
+llm:
+  enabled: false
+  provider_env: TRUSTPROBE_LLM_API_KEY
+out_dir: C:\Users\modiha1\Downloads\MCP Scanner Final\MCP Scanner Final\out\MCP_Filesystem_2

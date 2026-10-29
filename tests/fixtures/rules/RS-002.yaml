@@ -1,0 +1,33 @@
+rule: RS-002
+cases:
+  - name: ssh key URI is high
+    expect: match
+    severity: high
+    surface:
+      resources: [{uri: "file:///home/user/.ssh/id_rsa", name: key}]
+      resource_contents: {}
+  - name: /etc URI is high
+    expect: match
+    severity: high
+    surface:
+      resources: [{uri: "file:///etc/passwd", name: passwd}]
+      resource_contents: {}
+  - name: template open to any path is medium
+    expect: match
+    severity: medium
+    surface:
+      resource_templates: [{uriTemplate: "file:///{path}", name: any_file}]
+  - name: custom scheme
+    expect: no_match
+    surface:
+      resources: [{uri: "calc://help", name: help_text}]
+      resource_contents: {}
+  - name: specific file in a workspace
+    expect: no_match
+    surface:
+      resources: [{uri: "file:///workspace/notes.txt", name: notes}]
+      resource_contents: {}
+  - name: template confined to a directory
+    expect: no_match
+    surface:
+      resource_templates: [{uriTemplate: "file:///workspace/{name}", name: note}]

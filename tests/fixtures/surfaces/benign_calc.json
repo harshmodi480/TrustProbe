@@ -1,0 +1,150 @@
+{
+  "server_name": "benign-calc",
+  "server_version": "1.30.0",
+  "tools": [
+    {
+      "name": "add",
+      "description": "Add two numbers.",
+      "inputSchema": {
+        "properties": {
+          "a": {
+            "maximum": 1000000000.0,
+            "minimum": -1000000000.0,
+            "title": "A",
+            "type": "number"
+          },
+          "b": {
+            "maximum": 1000000000.0,
+            "minimum": -1000000000.0,
+            "title": "B",
+            "type": "number"
+          }
+        },
+        "required": [
+          "a",
+          "b"
+        ],
+        "title": "addArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "number"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "addOutput",
+        "type": "object"
+      }
+    },
+    {
+      "name": "subtract",
+      "description": "Subtract the second number from the first.",
+      "inputSchema": {
+        "properties": {
+          "a": {
+            "maximum": 1000000000.0,
+            "minimum": -1000000000.0,
+            "title": "A",
+            "type": "number"
+          },
+          "b": {
+            "maximum": 1000000000.0,
+            "minimum": -1000000000.0,
+            "title": "B",
+            "type": "number"
+          }
+        },
+        "required": [
+          "a",
+          "b"
+        ],
+        "title": "subtractArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "number"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "subtractOutput",
+        "type": "object"
+      }
+    },
+    {
+      "name": "multiply",
+      "description": "Multiply two numbers.",
+      "inputSchema": {
+        "properties": {
+          "a": {
+            "maximum": 1000000000.0,
+            "minimum": -1000000000.0,
+            "title": "A",
+            "type": "number"
+          },
+          "b": {
+            "maximum": 1000000000.0,
+            "minimum": -1000000000.0,
+            "title": "B",
+            "type": "number"
+          }
+        },
+        "required": [
+          "a",
+          "b"
+        ],
+        "title": "multiplyArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "number"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "multiplyOutput",
+        "type": "object"
+      }
+    }
+  ],
+  "prompts": [
+    {
+      "name": "explain_result",
+      "description": "Ask for a plain-language explanation of a calculation result.",
+      "arguments": [
+        {
+          "name": "value",
+          "required": true
+        }
+      ],
+      "messages": [
+        "Explain in one short sentence what the number test means as the result of a calculation."
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "name": "help_text",
+      "uri": "calc://help",
+      "description": "Basic calculator help.",
+      "mimeType": "text/plain"
+    }
+  ],
+  "resource_templates": [],
+  "resource_contents": {
+    "calc://help": "This server adds, subtracts and multiplies numbers."
+  }
+}

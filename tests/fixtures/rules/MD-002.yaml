@@ -1,0 +1,22 @@
+rule: MD-002
+cases:
+  - name: npm package with no version
+    expect: match
+    source: {type: npm, package: some-server}
+    surface: {}
+  - name: pypi package with a range
+    expect: match
+    source: {type: pypi, package: some-server, version: "^1.0"}
+    surface: {}
+  - name: pinned pypi version
+    expect: no_match
+    source: {type: pypi, package: some-server, version: "1.2.3"}
+    surface: {}
+  - name: pinned npm prerelease
+    expect: no_match
+    source: {type: npm, package: some-server, version: "2.0.1-beta.1"}
+    surface: {}
+  - name: local path source
+    expect: no_match
+    source: {type: path, path: ./server}
+    surface: {}
