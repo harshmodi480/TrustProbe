@@ -1,0 +1,42 @@
+# Well-known MCP tool names. Powers SH-001 (name imitation) and TP-006 (cross-tool manipulation).
+# Extend freely: no code change needed.
+names:
+  - read_file
+  - write_file
+  - edit_file
+  - create_file
+  - delete_file
+  - move_file
+  - list_directory
+  - create_directory
+  - search_files
+  - get_file_info
+  - execute_command
+  - run_command
+  - run_script
+  - fetch
+  - fetch_url
+  - web_search
+  - send_email
+  - read_email
+  - create_issue
+  - list_issues
+  - create_pull_request
+  - git_commit
+  - git_status
+  - git_diff
+  - query_database
+  - read_query
+  - write_query
+  - list_tables
+  - get_weather
+  - take_screenshot
+  - navigate
+  - click
+  - send_message
+  - post_message
+  - search_code
+  - create_event
+  - list_events
+  - read_resource
+  - remember

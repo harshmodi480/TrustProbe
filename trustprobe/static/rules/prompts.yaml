@@ -1,0 +1,29 @@
+# Prompt safety: prompt templates are text the server inserts into the model's context.
+
+- id: PR-001
+  title: Hidden instructions in a prompt template
+  category: prompt_safety
+  severity: high
+  confidence: pattern_match
+  type: regex
+  fields: [prompt.description, prompt.messages]
+  patterns_from: [TP-001, TP-005]
+  min_matches: 1
+  description: "The prompt description or its rendered messages contain model-directed or concealing instructions."
+  impact: "Selecting the prompt hands the server a way to steer the model."
+  remediation: "Prompt text should only carry what the user is meant to send. Remove hidden directives."
+
+- id: PR-002
+  title: Tool-call directive in a prompt
+  category: prompt_safety
+  severity: medium
+  confidence: pattern_match
+  type: custom
+  function: prompt_tool_directive
+  options:
+    patterns:
+      - 'call\s+the\s+tool'
+      - 'use\s+the\s+.{1,40}?\s+tool\s+to'
+  description: "A rendered prompt message tells the model to call a tool."
+  impact: "A prompt can make the model take actions the user did not ask for."
+  remediation: "Do not have prompts instruct the model to call tools."

@@ -1,0 +1,43 @@
+# Resource safety: resource contents and URIs are read into the model's context.
+
+- id: RS-001
+  title: Hidden instructions in a resource
+  category: resource_safety
+  severity: high
+  confidence: pattern_match
+  type: regex
+  fields: [resource.description, resource.content]
+  patterns_from: [TP-001, TP-005]
+  min_matches: 1
+  description: "The resource description or content contains model-directed or concealing instructions."
+  impact: "Reading the resource can inject instructions into the model's context."
+  remediation: "Resource content should be data, not directives. Remove hidden instructions."
+
+- id: RS-002
+  title: Sensitive resource URI
+  category: resource_safety
+  severity: medium            # high for a URI that names a sensitive file
+  confidence: heuristic
+  type: custom
+  function: sensitive_resource_uri
+  description: "A file:// resource points at credentials or system files, or a template lets the caller choose any path."
+  impact: "The agent can be made to read secrets or arbitrary files through the resource interface."
+  remediation: "Expose only specific files, and constrain template variables to a directory."
+
+- id: RS-003
+  title: Secret-like string in a resource
+  category: resource_safety
+  severity: medium
+  confidence: pattern_match
+  type: regex
+  fields: [resource.content]
+  case_sensitive: true
+  patterns:
+    - '-----BEGIN [A-Z ]*PRIVATE KEY-----'
+    - 'AKIA[0-9A-Z]{16}'
+    - 'sk-[A-Za-z0-9]{20,}'
+    - 'ghp_[A-Za-z0-9]{36}'
+  min_matches: 1
+  description: "The resource content contains something shaped like a private key, cloud access key or API token."
+  impact: "Secrets served through a resource are handed to the model and anything downstream."
+  remediation: "Never serve credentials as resource content."

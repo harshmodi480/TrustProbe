@@ -1,0 +1,24 @@
+# Shadowing: tool names that imitate or collide with other tools.
+
+- id: SH-001
+  title: Tool name imitates a well-known tool
+  category: shadowing
+  severity: medium
+  confidence: heuristic
+  type: name_similarity
+  max_distance: 2
+  min_length: 5               # shorter names are too likely to be close to something by chance
+  description: "The tool name is one or two edits away from a well-known tool name, but not equal to it."
+  impact: "The model or the user may pick this tool believing it is the trusted one."
+  remediation: "Rename the tool so it cannot be confused with another tool."
+
+- id: SH-002
+  title: Duplicate or confusable tool names
+  category: shadowing
+  severity: high
+  confidence: pattern_match
+  type: custom
+  function: confusable_names
+  description: "Two tools have names that are equal after Unicode normalization and lowercasing, or a name mixes letters from different scripts."
+  impact: "Look-alike names let one tool pass as another, or hide a tool among legitimate ones."
+  remediation: "Use unique ASCII names and remove look-alike characters."

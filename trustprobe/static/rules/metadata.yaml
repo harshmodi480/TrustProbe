@@ -1,0 +1,23 @@
+# Metadata: who the server says it is, and how it was installed.
+
+- id: MD-001
+  title: Missing server identity
+  category: metadata
+  severity: info
+  confidence: heuristic
+  type: custom
+  function: missing_identity
+  description: "The initialize handshake did not report a server name or version."
+  impact: "It is harder to tell which server and release was reviewed."
+  remediation: "Report a name and version in the initialize handshake."
+
+- id: MD-002
+  title: Unpinned source
+  category: metadata
+  severity: low
+  confidence: heuristic
+  type: custom
+  function: unpinned_source
+  description: "The npm or PyPI package is not pinned to an exact version."
+  impact: "A later release can change behavior after this scan, so the result may not apply to what actually gets installed."
+  remediation: "Pin an exact version, for example package==1.2.3, and rescan when you upgrade."
