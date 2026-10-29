@@ -260,7 +260,8 @@ def _run_scan(cfg: ScanConfig, *, static_only: bool, yes: bool, out: Path | None
             raise _fail(str(e))
         except KeyboardInterrupt:
             raise typer.Exit(130)
-        assert data.surface is not None
+        if data.surface is None:
+            raise _fail("server exited before completing enumeration — check logs/server_stderr.log in the output directory")
         static = static_analysis(cfg, data.surface, llm)
         result = build_result(
             cfg, nonce, data.surface, static, mode=mode, data=data, dyn=None, snapshot_findings=[],
