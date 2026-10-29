@@ -22,5 +22,20 @@ if not is_setup_done():
                     "fastapi>=0.110", "uvicorn[standard]>=0.29", "sse-starlette>=1.8"], check=True)
     print("Setup complete.")
 
+# No arguments → start the web app
+if len(sys.argv) == 1:
+    port = "7860"
+    print(f"Starting TrustProbe web app at http://localhost:{port}")
+    result = subprocess.run([VENV_PYTHON, "-m", "uvicorn", "web_app:app", "--port", port])
+    sys.exit(result.returncode)
+
+# "--port <n>" as the only argument → start web app on that port
+if len(sys.argv) == 3 and sys.argv[1] == "--port":
+    port = sys.argv[2]
+    print(f"Starting TrustProbe web app at http://localhost:{port}")
+    result = subprocess.run([VENV_PYTHON, "-m", "uvicorn", "web_app:app", "--port", port])
+    sys.exit(result.returncode)
+
+# Any other arguments → pass through to the trustprobe CLI
 result = subprocess.run([VENV_PYTHON, "-m", "trustprobe"] + sys.argv[1:])
 sys.exit(result.returncode)
