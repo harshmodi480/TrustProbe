@@ -112,8 +112,9 @@ class McpClient:
         startup_timeout_s: float = 30,
         call_timeout_s: float = 20,
         stderr_log: Path | None = None,
+        cwd: Path | None = None,
     ):
-        self._params = StdioServerParameters(command=command, args=args, env=_docker_cli_env())
+        self._params = StdioServerParameters(command=command, args=args, env=_docker_cli_env(), cwd=cwd)
         self.startup_timeout_s = startup_timeout_s
         self.call_timeout_s = call_timeout_s
         self.stderr_log = stderr_log

@@ -65,6 +65,73 @@ def load_result(path: Path) -> dict:
 # --------------------------------------------------------------------------- running the server
 
 
+def _npm_global_dir() -> Path | None:
+    """Return the npm global prefix directory on Windows (AppData/Roaming/npm), creating it if missing."""
+    import platform
+    if platform.system() != "Windows":
+        return None
+    npm_dir = Path.home() / "AppData" / "Roaming" / "npm"
+    npm_dir.mkdir(parents=True, exist_ok=True)
+    return npm_dir
+
+
+def _host_command(cfg: ScanConfig) -> tuple[str, list[str], Path | None]:
+    """Return (executable, args, cwd) to launch the MCP server directly on the host, without Docker."""
+    src = cfg.server.source
+    if src.type == "npm":
+        pkg = src.package + ("@" + src.version if src.version else "")
+        npm_dir = _npm_global_dir()
+        args = ["--yes", pkg]
+        if npm_dir is not None:
+            args = ["--prefix", str(npm_dir), "--yes", pkg]
+        return "npx", args, None
+    if src.type == "pypi":
+        pkg = src.package + ("==" + src.version if src.version else "")
+        return "uvx", [pkg], None
+    # path source — run the configured command inside the source directory
+    cmd = list(cfg.server.command)
+    return cmd[0], cmd[1:], cfg.source_path
+
+
+async def _session_direct(cfg: ScanConfig, nonce: str, data: SessionData, out_dir: Path,
+                           on_connected: Callable[[str, str | None], None] | None) -> None:
+    command, args, cwd = _host_command(cfg)
+    stderr_log = out_dir / "logs" / "server_stderr.log"
+    client = McpClient(
+        command, args,
+        startup_timeout_s=cfg.server.startup_timeout_s,
+        call_timeout_s=cfg.scan.dynamic.call_timeout_s,
+        stderr_log=stderr_log,
+        cwd=cwd,
+    )
+    try:
+        async with client:
+            if on_connected:
+                on_connected(client.server_name, client.server_version)
+            await run_session(client, cfg, nonce, data, probe=False)
+    except ClientError:
+        raise
+    except Exception as e:  # noqa: BLE001
+        if client.session is None:
+            raise ClientError(f"could not connect to the server: {e}") from e
+        if not data.finished:
+            data.notes.append(f"session ended early: {type(e).__name__}: {e}")
+    finally:
+        adopt_client(data, client)
+
+
+def run_server_direct(cfg: ScanConfig, nonce: str, out_dir: Path, *,
+                      on_connected: Callable[[str, str | None], None] | None = None) -> SessionData:
+    """Enumerate the server's surface by running it directly on the host (no Docker sandbox)."""
+    data = SessionData(started=time.time())
+    try:
+        asyncio.run(_session_direct(cfg, nonce, data, out_dir, on_connected))
+    except ClientError as e:
+        raise SandboxError(f"{e}. See logs/server_stderr.log in the output directory for the server's stderr.") from e
+    data.ended = time.time()
+    return data
+
+
 async def _session(cfg: ScanConfig, sandbox: Sandbox, nonce: str, probe: bool, data: SessionData,
                    on_connected: Callable[[str, str | None], None] | None) -> None:
     command, args = sandbox.server_process()

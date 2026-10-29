@@ -24,6 +24,7 @@ from trustprobe.pipeline import (
     make_llm,
     redact_logs,
     run_server,
+    run_server_direct,
     static_analysis,
     write_outputs,
 )
@@ -231,22 +232,51 @@ def _run_scan(cfg: ScanConfig, *, static_only: bool, yes: bool, out: Path | None
         _finish(result, found, out_dir, redactor, fail_on)
         return
 
-    ok, info = docker_available()
-    if not ok:
-        raise _fail(f"docker unavailable: {info}")
-
+    docker_ok, docker_info = docker_available()
     mode = "static" if (static_only or cfg.scan.mode == "static" or not cfg.scan.dynamic.enabled) else "full"
+
+    if mode == "full" and not docker_ok:
+        raise _fail(f"docker unavailable: {docker_info}")
+
     console.print(f"[bold]About to scan:[/bold] {cfg.name}", markup=True)
     console.print(f"  source   : {cfg.server.source.type} {cfg.source_path or cfg.server.source.package}", markup=False)
-    console.print(f"  runtime  : {cfg.runtime}; command inside the container: {' '.join(cfg.server.command)}", markup=False)
-    console.print("  sandbox  : the image build has network access (dependency install only); the run has --network none,", markup=False)
-    console.print("             read-only root, no capabilities, non-root user, 512m memory, 1 cpu, only fake secrets", markup=False)
     console.print(f"  mode     : {'full (static and dynamic)' if mode == 'full' else 'static only (no tool calls)'}", markup=False)
-    if not yes and not typer.confirm("Run the server inside the sandbox now?", default=False):
-        raise _fail("aborted: nothing was run")
 
     nonce = new_nonce()
     save_run_state(out_dir, nonce)
+
+    if mode == "static" and not docker_ok:
+        console.print(f"  sandbox  : [yellow]Docker unavailable ({docker_info}); running server directly on host[/yellow]", markup=True)
+        if not yes and not typer.confirm("Run the server directly on this host now?", default=False):
+            raise _fail("aborted: nothing was run")
+
+        def connected_direct(name: str, version: str | None) -> None:
+            _step(3, "Connecting (stdio)", f"ok server={name} {version or ''}".rstrip())
+
+        try:
+            data = run_server_direct(cfg, nonce, out_dir, on_connected=connected_direct)
+        except SandboxError as e:
+            console.print()
+            raise _fail(str(e))
+        except KeyboardInterrupt:
+            raise typer.Exit(130)
+        assert data.surface is not None
+        static = static_analysis(cfg, data.surface, llm)
+        result = build_result(
+            cfg, nonce, data.surface, static, mode=mode, data=data, dyn=None, snapshot_findings=[],
+            monitor_note="", timed_out=False, started=started,
+        )
+        attach_llm_info(result, cfg, llm, llm_note)
+        _report_steps(result, mode, static_count=len(static.findings), dyn_count=0, snap_count=0)
+        _finish(result, data.surface, out_dir, redactor, fail_on)
+        return
+
+    console.print(f"  runtime  : {cfg.runtime}; command inside the container: {' '.join(cfg.server.command)}", markup=False)
+    console.print("  sandbox  : the image build has network access (dependency install only); the run has --network none,", markup=False)
+    console.print("             read-only root, no capabilities, non-root user, 512m memory, 1 cpu, only fake secrets", markup=False)
+    if not yes and not typer.confirm("Run the server inside the sandbox now?", default=False):
+        raise _fail("aborted: nothing was run")
+
     sandbox = Sandbox(cfg, nonce, out_dir)
     try:
         t0 = time.time()
