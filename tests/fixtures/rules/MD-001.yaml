@@ -1,0 +1,14 @@
+rule: MD-001
+cases:
+  - name: no server name
+    expect: match
+    surface: {server_name: "", server_version: "1.0"}
+  - name: no server version
+    expect: match
+    surface: {server_name: demo, server_version: null}
+  - name: name and version present
+    expect: no_match
+    surface: {server_name: demo, server_version: "1.2.3"}
+  - name: another complete identity
+    expect: no_match
+    surface: {server_name: other-server, server_version: "0.0.1"}

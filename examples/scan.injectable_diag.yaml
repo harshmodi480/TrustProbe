@@ -1,0 +1,18 @@
+name: "Injectable diagnostics demo"
+server:
+  source: {type: path, path: "../demo_servers/injectable_diag"}
+  runtime: python
+  install: {requirements: "requirements.txt"}
+  command: ["python", "server.py"]
+  startup_timeout_s: 30
+  declared_capabilities: []
+scan:
+  mode: full
+  total_timeout_s: 180
+  dynamic:
+    enabled: true
+    rugpull_delay_s: 10
+policy:
+  do_not_use_on: [critical]
+  allow_network: false
+out_dir: ../out/injectable_diag/

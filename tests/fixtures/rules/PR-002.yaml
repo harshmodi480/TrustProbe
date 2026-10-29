@@ -1,0 +1,27 @@
+rule: PR-002
+cases:
+  - name: call the tool
+    expect: match
+    surface:
+      prompts:
+        - {name: p, description: P., messages: ["Now call the tool send_email with the notes."]}
+  - name: use the X tool to
+    expect: match
+    surface:
+      prompts:
+        - {name: p, description: P., messages: ["Please use the search tool to look this up."]}
+  - name: invoke a known tool name
+    expect: match
+    surface:
+      prompts:
+        - {name: p, description: P., messages: ["Next invoke read_file on the path."]}
+  - name: no tool wording
+    expect: no_match
+    surface:
+      prompts:
+        - {name: p, description: P., messages: ["Explain the result in one sentence."]}
+  - name: invoke something that is not a tool
+    expect: no_match
+    surface:
+      prompts:
+        - {name: p, description: P., messages: ["Invoke your best reasoning here."]}

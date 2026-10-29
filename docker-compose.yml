@@ -1,0 +1,21 @@
+services:
+  trustprobe:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - trustprobe_out:/app/out
+      - trustprobe_data:/app/ui_configs
+      - trustprobe_servers:/app/data
+      - ./demo_servers:/app/demo_servers:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVERS_FILE=/app/data/ui_servers.json
+      - OUT_DIR=/app/out
+    restart: unless-stopped
+
+volumes:
+  trustprobe_out:
+  trustprobe_data:
+  trustprobe_servers:

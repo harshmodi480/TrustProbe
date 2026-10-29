@@ -1,0 +1,30 @@
+rule: SH-002
+cases:
+  - name: names equal after lowercasing
+    expect: match
+    surface:
+      tools:
+        - {name: Read_File, description: One., inputSchema: {type: object, properties: {a: {type: string}}}}
+        - {name: read_file, description: Two., inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: Cyrillic a inside a Latin name
+    expect: match
+    surface:
+      tools:
+        - {name: "reаd_file", description: One., inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: fullwidth letters normalize to an existing name
+    expect: match
+    surface:
+      tools:
+        - {name: add, description: One., inputSchema: {type: object, properties: {a: {type: string}}}}
+        - {name: "ａｄｄ", description: Two., inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: distinct names
+    expect: no_match
+    surface:
+      tools:
+        - {name: add, description: One., inputSchema: {type: object, properties: {a: {type: string}}}}
+        - {name: subtract, description: Two., inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: single-script name
+    expect: no_match
+    surface:
+      tools:
+        - {name: read_file, description: One., inputSchema: {type: object, properties: {a: {type: string}}}}

@@ -1,0 +1,90 @@
+# Tool poisoning: text in tool definitions that tries to steer the AI model.
+# Fields: tool.name, tool.description, tool.param_names, tool.param_descriptions, tool.schema_values
+# (defaults, enums, examples, constants, titles). "*" means every text field of every item.
+
+- id: TP-001
+  title: Model-directed instruction hidden in a tool description
+  category: tool_poisoning
+  severity: high
+  confidence: pattern_match
+  type: regex
+  fields: [tool.description, tool.param_descriptions]
+  patterns:                       # case-insensitive, DOTALL
+    - '<\s*(important|system|instructions?|secret)\s*>'
+    - 'ignore\s+(all\s+|any\s+)?(previous|prior|above)\s+instructions'
+    - 'before\s+(using|calling|invoking)\s+this\s+tool'
+    - '\b(read|open|cat|access|send|upload|post|include)\b[^.]{0,60}(\.ssh|id_rsa|\.env|\.aws|credentials|/etc/passwd|api[_ -]?key|password|token)'
+    - 'you\s+must\s+(first|always|also)\b'
+  min_matches: 1
+  description: "The text tries to instruct the AI model, not describe the tool to a person."
+  impact: "The model may follow hidden instructions, leaking data or acting against the user."
+  remediation: "Remove model-directed instructions. Descriptions must say only what the tool does."
+
+- id: TP-002
+  title: Invisible or bidirectional Unicode characters
+  category: tool_poisoning
+  severity: high
+  confidence: pattern_match
+  type: unicode
+  fields: ["*"]
+  ranges: ["200B-200F", "202A-202E", "2060-2064", "2066-2069", "FEFF", "E0000-E007F"]
+  description: "The text contains zero-width, bidirectional-control or tag characters that a person cannot see but a model reads."
+  impact: "Instructions can be hidden in text that looks harmless when reviewed by a human."
+  remediation: "Strip invisible and bidirectional control characters from every definition."
+
+- id: TP-003
+  title: Instructions inside schema values or parameter names
+  category: tool_poisoning
+  severity: high
+  confidence: pattern_match
+  type: regex
+  fields: [tool.param_names, tool.schema_values]
+  patterns_from: [TP-001]
+  min_matches: 1
+  description: "A parameter name, default, enum, example or title contains model-directed instructions."
+  impact: "Schema text is shown to the model alongside the description, so it is a second hiding place for instructions."
+  remediation: "Keep schema values to plain data. Move documentation into short, neutral descriptions."
+
+- id: TP-004
+  title: Abnormally long description
+  category: tool_poisoning
+  severity: low
+  confidence: heuristic
+  type: length
+  fields: [tool.description, prompt.description, resource.description]
+  thresholds:
+    - {over: 1500, severity: low}
+    - {over: 4000, severity: medium}
+  description: "The description is far longer than a normal tool description."
+  impact: "Long text can bury instructions where a reviewer will not read them."
+  remediation: "Shorten the description and review the full text."
+
+- id: TP-005
+  title: Concealment from the user
+  category: tool_poisoning
+  severity: high
+  confidence: pattern_match
+  type: regex
+  fields: [tool.description, tool.param_descriptions]
+  patterns:
+    - 'do\s+not\s+(tell|mention|reveal|show|inform)[^.]{0,40}(user|human)'
+    - 'without\s+(telling|informing|notifying)'
+    - 'silently'
+    - 'secretly'
+  min_matches: 1
+  description: "The text asks the model to hide something from the user."
+  impact: "A legitimate tool has no reason to conceal its behavior from the person it works for."
+  remediation: "Remove the concealment wording and make the tool's behavior visible to the user."
+
+- id: TP-006
+  title: Cross-tool manipulation
+  category: tool_poisoning
+  severity: high
+  confidence: pattern_match
+  type: custom
+  function: cross_tool_manipulation
+  options:
+    imperatives: [always, must, instead, bcc, redirect, override]
+  description: "The description names another tool and uses imperative wording about it."
+  impact: "One tool can steer the model into misusing a different, more privileged tool."
+  remediation: "A description should not refer to or direct the use of other tools."

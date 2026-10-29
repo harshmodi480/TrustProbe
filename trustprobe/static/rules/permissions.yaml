@@ -1,0 +1,59 @@
+# Permissions: parameters and capabilities that give a tool more reach than it needs.
+
+- id: PM-001
+  title: Unconstrained dangerous parameter
+  category: permissions
+  severity: medium            # raised to high for command-like parameter names
+  confidence: heuristic
+  type: schema_param
+  param_rules:
+    - names: [command, cmd, shell, script, code, eval, exec]
+      severity: high
+    - names: [sql, query, path, file, filepath, filename, dir, url, uri, host]
+      severity: medium
+  constraint_keys: [enum, pattern, maxLength, format, const]
+  description: "A free-text string parameter with a sensitive name has no enum, pattern, maxLength or format."
+  impact: "Whatever the model passes goes straight to a shell, file, query or network call, so a manipulated model can reach anything."
+  remediation: "Constrain the parameter with an enum, pattern, maxLength or format, and validate it in the server."
+
+- id: PM-002
+  title: Capability inference
+  category: permissions
+  severity: low               # info when the operator declared the capability
+  confidence: heuristic
+  type: custom
+  function: capability_inference
+  options:
+    keywords:
+      filesystem: [file, directory, folder, path, disk, filesystem]
+      network: [http, https, url, fetch, download, upload, request, socket, web, internet, email, smtp, webhook, ping, host]
+      shell: [shell, bash, command, exec, execute, terminal, subprocess, script]
+      database: [sql, database, query, sqlite, postgres, mysql]
+      secrets: [password, secret, token, credential, "api key", ssh, "private key"]
+  description: "The tool name and description suggest a capability the operator did not declare."
+  impact: "The server may do more than the operator expects when connecting it to an agent."
+  remediation: "Add the capability to declared_capabilities if it is expected, or reconsider the server."
+
+- id: PM-003
+  title: Free-form input object
+  category: permissions
+  severity: low
+  confidence: heuristic
+  type: custom
+  function: free_form_input
+  description: "The input schema accepts arbitrary properties or says nothing about its input."
+  impact: "Nothing limits what the model can send, which makes input validation and review harder."
+  remediation: "Declare explicit properties and set additionalProperties to false."
+
+- id: PM-004
+  title: Destructive tool without a destructiveHint annotation
+  category: permissions
+  severity: low
+  confidence: heuristic
+  type: custom
+  function: destructive_without_annotation
+  options:
+    words: [delete, remove, drop, kill, format, overwrite]
+  description: "The tool name suggests it destroys data, but it carries no destructiveHint annotation."
+  impact: "A client cannot warn the user or ask for confirmation before a destructive call."
+  remediation: "Set annotations.destructiveHint on tools that delete, overwrite or otherwise destroy data."

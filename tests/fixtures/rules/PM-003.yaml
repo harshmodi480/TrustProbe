@@ -1,0 +1,22 @@
+rule: PM-003
+cases:
+  - name: additionalProperties true
+    expect: match
+    surface:
+      tools:
+        - {name: any, description: Any., inputSchema: {type: object, properties: {a: {type: string}}, additionalProperties: true}}
+  - name: schema says nothing about input
+    expect: match
+    surface:
+      tools:
+        - {name: blank, description: Blank., inputSchema: {type: object}}
+  - name: normal declared properties
+    expect: no_match
+    surface:
+      tools:
+        - {name: add, description: Add., inputSchema: {type: object, properties: {a: {type: number}}, required: [a]}}
+  - name: explicit no-argument tool
+    expect: no_match
+    surface:
+      tools:
+        - {name: ping, description: Ping., inputSchema: {type: object, properties: {}}}

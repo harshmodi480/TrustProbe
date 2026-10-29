@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} report: {{ meta.server_name }}</title>
+<style>
+:root {
+  --bg:#f7f7f5; --card:#fff; --text:#1c1f23; --muted:#5d6670; --line:#dcdfe3; --code:#f1f2f4;
+  --bad:#b42318; --bad-bg:#fdecea; --warn:#9a5b00; --warn-bg:#fff4dc; --good:#157347; --good-bg:#e5f5ec;
+  --crit:#b42318; --high:#d9480f; --med:#9a5b00; --low:#2f6fa3; --info:#5d6670; --accent:#2b4acb; --mark:#fff0a8;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#14171a; --card:#1d2125; --text:#e6e8ea; --muted:#a0a8b0; --line:#343a40; --code:#262b30;
+    --bad:#ff8a7a; --bad-bg:#3a1a17; --warn:#f0b35a; --warn-bg:#35280f; --good:#6fd39a; --good-bg:#12301f;
+    --crit:#ff8a7a; --high:#ff9b66; --med:#f0b35a; --low:#7db4e6; --info:#a0a8b0; --accent:#8da2ff; --mark:#5a4d10;
+  }
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+main { max-width:1100px; margin:0 auto; padding:24px 16px 64px; }
+h1 { font-size:1.6rem; margin:0 0 4px; }
+h2 { font-size:1.15rem; margin:32px 0 10px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+dl.meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px 18px; margin:12px 0 0; }
+dl.meta dt { font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+dl.meta dd { margin:0; font-weight:600; overflow-wrap:anywhere; }
+.banner { border-radius:10px; padding:18px 20px; margin:18px 0; border:1px solid; display:flex; flex-wrap:wrap; gap:6px 24px; align-items:baseline; justify-content:space-between; }
+.banner.bad { background:var(--bad-bg); border-color:var(--bad); color:var(--bad); }
+.banner.warn { background:var(--warn-bg); border-color:var(--warn); color:var(--warn); }
+.banner.good { background:var(--good-bg); border-color:var(--good); color:var(--good); }
+.banner .verdict { font-size:1.5rem; font-weight:800; }
+.banner .score { font-size:1.1rem; font-weight:700; }
+.banner .reason { flex-basis:100%; margin:0; color:var(--text); }
+.chips { display:flex; flex-wrap:wrap; gap:8px; }
+.chip { border:1px solid var(--line); border-radius:999px; padding:3px 12px; font-size:.85rem; color:var(--muted); }
+.chip.observed { background:var(--bad-bg); border-color:var(--bad); color:var(--bad); font-weight:600; }
+.chip.inferred { border-color:var(--warn); color:var(--warn); font-weight:600; }
+table { width:100%; border-collapse:collapse; }
+th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+.table-wrap { overflow-x:auto; }
+.pill { display:inline-block; border-radius:6px; padding:1px 8px; font-size:.75rem; font-weight:700; text-transform:uppercase; border:1px solid currentColor; }
+.sev-critical { color:var(--crit); } .sev-high { color:var(--high); } .sev-medium { color:var(--med); }
+.sev-low { color:var(--low); } .sev-info { color:var(--info); }
+.conf { color:var(--muted); font-size:.8rem; }
+.conf.confirmed { color:var(--good); font-weight:700; }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.85rem; }
+pre { background:var(--code); border-radius:6px; padding:10px 12px; margin:6px 0; overflow-x:auto; white-space:pre-wrap; overflow-wrap:anywhere; }
+mark { background:var(--mark); color:inherit; border-radius:3px; padding:0 2px; }
+.filters { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:0 0 10px; }
+select, button { font:inherit; padding:5px 10px; border-radius:6px; border:1px solid var(--line); background:var(--card); color:var(--text); cursor:pointer; }
+button:hover { border-color:var(--accent); }
+tr.f > td { cursor:pointer; }
+tr.f:hover > td { background:var(--code); }
+tr.d > td { background:var(--bg); padding:14px 16px 18px; }
+tr.d[hidden] { display:none; }
+.toggle { color:var(--accent); font-weight:700; margin-right:6px; display:inline-block; width:1em; }
+.evidence { border-left:3px solid var(--line); padding-left:12px; margin:10px 0; }
+.evidence h4 { margin:0; font-size:.85rem; }
+.kind { font-size:.7rem; text-transform:uppercase; color:var(--muted); letter-spacing:.05em; }
+.diff { display:grid; grid-template-columns:1fr 1fr; gap:0 8px; }
+.diff .col { min-width:0; }
+.diff pre { margin:0; border-radius:0; }
+.diff .removed, .diff .changed.old { background:var(--bad-bg); }
+.diff .added, .diff .changed.new { background:var(--good-bg); }
+.diff .head { font-weight:700; font-size:.8rem; color:var(--muted); margin-bottom:4px; }
+.kv { display:grid; grid-template-columns:max-content 1fr; gap:4px 14px; margin:0; }
+.kv dt { color:var(--muted); } .kv dd { margin:0; overflow-wrap:anywhere; }
+.muted { color:var(--muted); }
+ul.plain { margin:6px 0; padding-left:20px; }
+.notcovered { border-left:4px solid var(--warn); padding-left:12px; }
+.disclaimer { margin-top:36px; border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:14px 18px; background:var(--card); }
+a { color:var(--accent); }
+@media (max-width:640px) { .diff { grid-template-columns:1fr; } .banner .verdict { font-size:1.2rem; } }
+@media print {
+  body { background:#fff; color:#000; } main { max-width:none; padding:0; }
+  tr.d[hidden] { display:table-row; } .filters, .copy { display:none; } .card, .disclaimer { break-inside:avoid; }
+}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>{{ title }} report</h1>
+  <p class="muted" style="margin:0">Evidence-based check of an MCP server before it is connected to an agent.</p>
+  <dl class="meta">
+    <div><dt>Server</dt><dd>{{ meta.server_name }}{% if meta.server_version %} {{ meta.server_version }}{% endif %}</dd></div>
+    <div><dt>Scan date (UTC)</dt><dd>{{ meta.started }}</dd></div>
+    <div><dt>Scanner version</dt><dd>{{ title }} {{ meta.scanner_version }}</dd></div>
+    <div><dt>Nonce</dt><dd>{{ meta.nonce }}</dd></div>
+    <div><dt>Mode</dt><dd>{{ 'full (static and dynamic)' if meta.mode == 'full' else 'static only' }}</dd></div>
+    <div><dt>Duration</dt><dd>{{ meta.duration_s }} s</dd></div>
+  </dl>
+</header>
+
+<section class="banner {{ verdict_class }}" aria-label="Verdict">
+  <span class="verdict">{{ verdict_label }}</span>
+  <span class="score">Trust score {{ data.trust_score }}/100</span>
+  <p class="reason">{{ meta.verdict_reason }}</p>
+</section>
+
+<h2>Findings at a glance</h2>
+<div class="chips">
+  {% for sev, n in counts.items() %}<span class="chip"><span class="sev-{{ sev }}"><b>{{ n }}</b></span> {{ sev }}</span>{% endfor %}
+</div>
+
+<h2>Capabilities detected</h2>
+<div class="chips">
+  {% for cap, state in capabilities.items() %}
+  <span class="chip {{ state }}">{{ cap }}{% if state == 'observed' %}: observed at runtime{% elif state == 'inferred' %}: inferred from descriptions{% else %}: not detected{% endif %}</span>
+  {% endfor %}
+</div>
+
+<h2 id="coverage">Coverage</h2>
+<div class="card">
+  <dl class="kv">
+    <dt>Mode</dt><dd>{{ cov.mode }}</dd>
+    <dt>Dynamic analysis</dt><dd>{{ cov.dynamic }}</dd>
+    <dt>Tools</dt><dd>{{ cov.tools_called }} called of {{ cov.tools_total }}</dd>
+    <dt>Prompts</dt><dd>{{ cov.prompts_fetched }} fetched of {{ cov.prompts_total }}</dd>
+    <dt>Resources</dt><dd>{{ cov.resources_read }} read of {{ cov.resources_total }}</dd>
+    <dt>Tool calls made</dt><dd>{{ cov.calls_made }} ({{ cov.hostile_inputs_sent }} with hostile inputs)</dd>
+    <dt>Syscall events observed</dt><dd>{{ cov.syscall_events }}</dd>
+    <dt>Tool-list snapshots</dt><dd>{{ cov.snapshots | join(', ') if cov.snapshots else 'none' }}</dd>
+    <dt>Static rules run</dt><dd>{{ cov.static_rules_run | length }}: {{ cov.static_rules_run | join(', ') }}</dd>
+    <dt>Dynamic probes run</dt><dd>{% if cov.dynamic_probes_run %}{{ cov.dynamic_probes_run | length }}: {{ cov.dynamic_probes_run | join(', ') }}{% else %}none{% endif %}</dd>
+    {% if cov.monitor_note %}<dt>Monitor note</dt><dd>{{ cov.monitor_note }}</dd>{% endif %}
+    {% if cov.llm %}<dt>Optional LLM checks</dt><dd>{% if cov.llm.active %}on ({{ cov.llm.model }}): {{ cov.llm.calls }} calls{% if cov.llm.static_review %}, description review{% endif %}{% if cov.llm.behavior_check %}, behavior check{% endif %}{% if cov.llm.explained %}, {{ cov.llm.explained }} explanations{% endif %}{% if cov.llm.failures or cov.llm.refusals or cov.llm.discarded_replies %} ({{ cov.llm.failures }} failed, {{ cov.llm.refusals }} refused, {{ cov.llm.discarded_replies }} unparseable){% endif %}{% elif cov.llm.enabled %}requested but not run{% else %}off{% endif %}</dd>{% endif %}
+  </dl>
+  {% if cov.dynamic_probes_skipped %}
+  <p><b>Not tested (skipped):</b></p>
+  <ul class="plain">{% for k, v in cov.dynamic_probes_skipped.items() %}<li><code>{{ k }}</code>: {{ v }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if cov.dynamic_probe_errors or cov.static_rule_errors %}
+  <p><b>Errors (these checks did not complete):</b></p>
+  <ul class="plain">
+    {% for k, v in cov.dynamic_probe_errors.items() %}<li><code>{{ k }}</code>: {{ v }}</li>{% endfor %}
+    {% for k, v in cov.static_rule_errors.items() %}<li><code>{{ k }}</code>: {{ v }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% if cov.notes %}<p><b>Notes:</b></p><ul class="plain">{% for n in cov.notes %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
+  <div class="notcovered">
+    <p><b>Never covered by this scan:</b></p>
+    <ul class="plain">{% for n in cov.not_covered %}<li>{{ n }}</li>{% endfor %}</ul>
+  </div>
+</div>
+
+<h2 id="findings">Findings</h2>
+{% if not findings %}
+<div class="card"><p style="margin:0">No findings. This means nothing was found in the scenarios listed under Coverage, not that the server is safe.</p></div>
+{% else %}
+<div class="filters">
+  <label>Phase <select id="f-phase"><option value="">all</option>{% for p in phases %}<option>{{ p }}</option>{% endfor %}</select></label>
+  <label>Category <select id="f-category"><option value="">all</option>{% for c in categories %}<option>{{ c }}</option>{% endfor %}</select></label>
+  <button type="button" id="expand-all">Expand all</button>
+  <button type="button" id="collapse-all">Collapse all</button>
+  <span class="muted" id="shown"></span>
+</div>
+<div class="table-wrap">
+<table id="findings-table">
+  <thead><tr><th>Severity</th><th>Finding</th><th>Target</th><th>Confidence</th><th>Phase</th><th>Category</th></tr></thead>
+  <tbody>
+  {% for f in findings %}
+  <tr class="f" id="{{ f.anchor }}" data-phase="{{ f.phase }}" data-category="{{ f.category }}" tabindex="0" role="button" aria-expanded="false">
+    <td><span class="toggle">&#9656;</span><span class="pill sev-{{ f.severity }}">{{ f.severity }}</span></td>
+    <td><b>{{ f.rule_id }}</b> {{ f.title }}</td>
+    <td><code>{{ f.target }}</code></td>
+    <td><span class="conf {{ f.confidence }}">{{ f.confidence | replace('_', ' ') }}</span></td>
+    <td>{{ f.phase }}</td>
+    <td>{{ f.category | replace('_', ' ') }}</td>
+  </tr>
+  <tr class="d" data-phase="{{ f.phase }}" data-category="{{ f.category }}" hidden>
+    <td colspan="6">
+      <p style="margin-top:0">{{ f.description }}</p>
+      <p><b>Impact.</b> {{ f.impact }}</p>
+      <p><b>Remediation.</b> {{ f.remediation }}</p>
+      {% if meta.explanations and meta.explanations.get(f.id) %}<p><b>In plain language</b> <span class="muted">(written by a language model)</span><b>.</b> {{ meta.explanations[f.id] }}</p>{% endif %}
+      {% if f.confidence == 'llm_opinion' %}<p class="muted">This finding is a language model's opinion, not proof. It never decides the verdict on its own.</p>{% endif %}
+      <h4 style="margin-bottom:0">Evidence</h4>
+      {% for e in f.evidence %}
+      <div class="evidence">
+        <span class="kind">{{ e.kind | replace('_', ' ') }}</span>
+        <h4>{{ e.summary }}</h4>
+        {% if e.kind == 'diff' %}
+          {% set rows = e.detail | diff_rows %}
+          <div class="diff">
+            <div class="col"><div class="head">Before</div>{% for old, new, kind in rows %}<pre class="{{ kind }}{{ ' old' if kind == 'changed' }}">{{ old if old else ' ' }}</pre>{% endfor %}</div>
+            <div class="col"><div class="head">After</div>{% for old, new, kind in rows %}<pre class="{{ kind }}{{ ' new' if kind == 'changed' }}">{{ new if new else ' ' }}</pre>{% endfor %}</div>
+          </div>
+        {% else %}
+          <pre>{{ e.detail | mark(e.matched) }}</pre>
+        {% endif %}
+        {% if e.arguments is not none and e.tool %}<div class="muted">arguments: <code>{{ e.arguments | tojson }}</code></div>{% endif %}
+      </div>
+      {% endfor %}
+      <h4 style="margin-bottom:0">How to reproduce</h4>
+      <p class="muted" style="margin:2px 0">Run the server in the sandbox with <code>trustprobe scan</code> (never on your own machine, the fake secrets exist only there), then send:</p>
+      <pre id="repro-{{ f.anchor }}">{{ f.repro }}</pre>
+      <button type="button" class="copy" data-target="repro-{{ f.anchor }}">Copy request</button>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+<h2>Tool inventory</h2>
+<div class="table-wrap card">
+<table>
+  <thead><tr><th>Kind</th><th>Name</th><th>Description</th><th>Findings</th></tr></thead>
+  <tbody>
+  {% for kind, items in (('tool', inventory.tools), ('prompt', inventory.prompts), ('resource', inventory.resources)) %}
+    {% for item in items %}
+    <tr>
+      <td>{{ kind }}</td>
+      <td><code>{{ item.name }}</code></td>
+      <td>{{ item.description }}</td>
+      <td>{% for f in by_target.get(item.name, []) %}<a href="#{{ f.anchor }}"><span class="pill sev-{{ f.severity }}">{{ f.rule_id }}</span></a> {% else %}<span class="muted">none</span>{% endfor %}</td>
+    </tr>
+    {% endfor %}
+  {% endfor %}
+  {% if by_target.get('server') %}
+    <tr><td>server</td><td><code>server</code></td><td>The server as a whole</td><td>{% for f in by_target['server'] %}<a href="#{{ f.anchor }}"><span class="pill sev-{{ f.severity }}">{{ f.rule_id }}</span></a> {% endfor %}</td></tr>
+  {% endif %}
+  </tbody>
+</table>
+</div>
+
+<h2>Suggested remediation</h2>
+{% if remediation %}
+<div class="card">
+  <ul class="plain">
+  {% for r in remediation %}<li><b>{{ r.rule_id }} {{ r.title }}</b> ({{ r.targets | join(', ') }}): {{ r.text }}</li>{% endfor %}
+  </ul>
+</div>
+{% else %}
+<p class="muted">Nothing to fix based on this scan.</p>
+{% endif %}
+
+<section class="disclaimer" aria-label="Disclaimer">
+  <b>Disclaimer.</b> {{ disclaimer }}
+</section>
+</main>
+
+<script>
+(function () {
+  var rows = Array.prototype.slice.call(document.querySelectorAll('#findings-table tr.f'));
+  function detailOf(row) { return row.nextElementSibling; }
+  function setOpen(row, open) {
+    var d = detailOf(row); if (!d) return;
+    d.hidden = !open; row.setAttribute('aria-expanded', open ? 'true' : 'false');
+    row.querySelector('.toggle').innerHTML = open ? '&#9662;' : '&#9656;';
+  }
+  rows.forEach(function (row) {
+    function flip() { setOpen(row, detailOf(row).hidden); }
+    row.addEventListener('click', flip);
+    row.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
+  });
+  var phase = document.getElementById('f-phase'), cat = document.getElementById('f-category'), shown = document.getElementById('shown');
+  function apply() {
+    var n = 0;
+    rows.forEach(function (row) {
+      var ok = (!phase.value || row.dataset.phase === phase.value) && (!cat.value || row.dataset.category === cat.value);
+      row.hidden = !ok; if (ok) n++;
+      var d = detailOf(row); if (!ok) d.hidden = true; else if (row.getAttribute('aria-expanded') === 'true') d.hidden = false;
+    });
+    if (shown) shown.textContent = n + ' of ' + rows.length + ' shown';
+  }
+  if (phase) { phase.addEventListener('change', apply); cat.addEventListener('change', apply); apply(); }
+  var ex = document.getElementById('expand-all'), co = document.getElementById('collapse-all');
+  if (ex) ex.addEventListener('click', function () { rows.forEach(function (r) { if (!r.hidden) setOpen(r, true); }); });
+  if (co) co.addEventListener('click', function () { rows.forEach(function (r) { setOpen(r, false); }); });
+  document.querySelectorAll('button.copy').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var text = document.getElementById(b.dataset.target).textContent;
+      var done = function () { var old = b.textContent; b.textContent = 'Copied'; setTimeout(function () { b.textContent = old; }, 1200); };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); }
+      else { var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} document.body.removeChild(ta); done(); }
+    });
+  });
+  if (location.hash) { var t = document.querySelector(location.hash); if (t && t.classList.contains('f')) setOpen(t, true); }
+})();
+</script>
+</body>
+</html>

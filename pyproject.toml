@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trustprobe"
+version = "0.1.0"
+description = "Probe an MCP server in a locked-down sandbox and report what it does, with evidence."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "mcp==1.30.0",
+    "pydantic>=2.5,<3",
+    "PyYAML>=6.0",
+    "typer>=0.12",
+    "rich>=13.0",
+    "Jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+llm = ["anthropic>=1.0"]  # optional second-opinion checks (LR-001, DY-009) and plain-language explanations
+
+[project.scripts]
+trustprobe = "trustprobe.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["trustprobe*"]
+
+[tool.setuptools.package-data]
+trustprobe = [
+    "static/rules/*.yaml",
+    "static/known_tools.yaml",
+    "sandbox/images/*",
+    "report/templates/*.j2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = ["docker: needs a running Docker daemon"]

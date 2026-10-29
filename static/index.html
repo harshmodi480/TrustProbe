@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrustProbe — MCP Security Scanner</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--border:#30363d;
+  --accent:#5865f2;--accent-h:#4752c4;--accent-glow:rgba(88,101,242,.25);
+  --fg:#e6edf3;--muted:#768390;--muted2:#484f58;
+  --green:#3fb950;--yellow:#d29922;--red:#f85149;--blue:#58a6ff;--orange:#fb923c;
+  --green-bg:#0d2e1a;--yellow-bg:#2d1f00;--red-bg:#2d0f0f;--blue-bg:#0c1f3a;--orange-bg:#2d1500;
+}
+body{background:var(--bg);color:var(--fg);font-family:'Segoe UI',system-ui,sans-serif;
+  font-size:14px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── topbar ── */
+#topbar{background:var(--panel);border-bottom:1px solid var(--border);height:52px;
+  display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;
+  box-shadow:0 1px 0 var(--border)}
+.brand{font-size:16px;font-weight:800;letter-spacing:-.5px;display:flex;align-items:center;gap:8px}
+.brand-icon{width:28px;height:28px;background:var(--accent);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;font-size:14px}
+.brand-text{color:var(--fg)}
+.brand-text span{color:var(--accent)}
+.tp-divider{width:1px;height:20px;background:var(--border)}
+.subtitle{color:var(--muted);font-size:12px;font-weight:500}
+.spacer{flex:1}
+#docker-pill{display:flex;align-items:center;gap:7px;padding:5px 12px;
+  border-radius:20px;background:var(--panel2);border:1px solid var(--border);
+  font-size:11px;font-weight:500;color:var(--muted);cursor:default;position:relative;
+  transition:border-color .15s}
+#docker-pill:hover{border-color:var(--muted2)}
+#docker-pill:hover .docker-tip{display:block}
+.docker-tip{position:absolute;right:0;top:38px;background:var(--panel2);
+  border:1px solid var(--border);border-radius:8px;padding:8px 12px;
+  font-size:11px;white-space:nowrap;display:none;z-index:99;color:var(--fg);
+  box-shadow:0 4px 16px rgba(0,0,0,.4)}
+#docker-dot{width:8px;height:8px;border-radius:50%;background:var(--yellow);
+  flex-shrink:0;transition:background .3s}
+
+/* ── layout ── */
+#layout{display:flex;flex:1;overflow:hidden}
+
+/* ── sidebar ── */
+#sidebar{width:270px;background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-header{padding:16px 16px 12px;border-bottom:1px solid var(--border)}
+.sidebar-header h3{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.1em;margin-bottom:12px}
+#add-btn{width:100%;padding:8px 12px;background:var(--accent);color:#fff;border:none;
+  border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,box-shadow .15s;
+  display:flex;align-items:center;justify-content:center;gap:6px}
+#add-btn:hover{background:var(--accent-h);box-shadow:0 0 0 3px var(--accent-glow)}
+#add-btn svg{flex-shrink:0}
+#server-list{flex:1;overflow-y:auto;padding:8px}
+
+/* empty state */
+.empty-state-box{border:1px dashed var(--border);border-radius:10px;
+  color:var(--muted);text-align:center;padding:28px 16px;font-size:12px;
+  line-height:1.8;margin:4px}
+
+.s-item{padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:3px;
+  border:1px solid transparent;transition:background .12s,border-color .12s;
+  position:relative;display:flex;align-items:center;gap:10px}
+.s-item:hover{background:var(--panel2)}
+.s-item:hover .s-del{opacity:1}
+.s-item.active{background:var(--panel2);border-color:var(--border)}
+.s-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:3px;height:55%;background:var(--accent);border-radius:0 3px 3px 0}
+.s-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;font-size:15px;flex-shrink:0}
+.s-icon-npm{background:#1a2e0d}
+.s-icon-pypi{background:#0c1f3a}
+.s-icon-path{background:#2d1f00}
+.s-info{flex:1;min-width:0}
+.s-name{font-weight:600;font-size:13px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-sub{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+.s-del{opacity:0;background:none;border:none;color:var(--muted);cursor:pointer;
+  padding:2px 4px;border-radius:4px;font-size:13px;transition:opacity .15s,color .15s,background .15s;line-height:1}
+.s-del:hover{color:var(--red);background:var(--red-bg)}
+.verdict-dot{width:8px;height:8px;border-radius:50%;background:var(--muted2)}
+.verdict-dot.ok{background:var(--green)}
+.verdict-dot.warn{background:var(--yellow)}
+.verdict-dot.bad{background:var(--red)}
+
+/* sidebar verdict labels */
+.verdict-label{font-size:10px;font-weight:700;white-space:nowrap}
+.verdict-label.ok{color:var(--green)}
+.verdict-label.warn{color:var(--yellow)}
+.verdict-label.bad{color:var(--red)}
+
+.b-scanning{display:inline-block;padding:1px 7px;border-radius:4px;font-size:10px;
+  font-weight:700;background:var(--accent);color:#fff;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.b-npm{background:#1a2e0d;color:#3fb950}
+.b-pypi{background:#0c1f3a;color:#58a6ff}
+.b-path{background:#2d1f00;color:#d29922}
+
+/* ── main ── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── welcome state ── */
+#welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:40px;text-align:center;overflow-y:auto}
+#welcome h2{font-size:22px;font-weight:700;margin-bottom:8px}
+#welcome p{color:var(--muted);font-size:14px;max-width:480px;line-height:1.6;margin-bottom:32px}
+.examples-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:580px;width:100%;margin-bottom:24px}
+.example-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;cursor:pointer;text-align:left;transition:border-color .2s,background .15s,box-shadow .2s;
+  position:relative;overflow:hidden}
+.example-card:hover{border-color:var(--accent);background:var(--panel2);box-shadow:0 0 0 3px var(--accent-glow)}
+.example-card::after{content:'Click to add →';position:absolute;bottom:10px;right:12px;
+  font-size:10px;font-weight:600;color:var(--accent);opacity:0;transition:opacity .2s}
+.example-card:hover::after{opacity:1}
+.ec-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.ec-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.ec-name{font-weight:600;font-size:13px}
+.ec-src{font-size:11px;color:var(--muted);font-family:monospace;background:var(--panel2);
+  padding:1px 6px;border-radius:4px;word-break:break-all}
+.ec-desc{font-size:11px;color:var(--muted);line-height:1.5;margin-top:6px;margin-bottom:20px}
+.ec-risk{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700}
+.ec-risk-safe{background:var(--green-bg);color:var(--green)}
+.ec-risk-warn{background:var(--yellow-bg);color:var(--yellow)}
+.ec-risk-bad{background:var(--red-bg);color:var(--red)}
+.ec-risk-unk{background:var(--panel2);color:var(--muted)}
+.welcome-add{background:var(--accent);color:#fff;border:none;padding:9px 22px;
+  border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s}
+.welcome-add:hover{background:var(--accent-h)}
+.welcome-hint{font-size:12px;color:var(--muted2);margin-top:10px}
+
+/* ── server view ── */
+#srv-view{display:none;flex:1;flex-direction:column;overflow:hidden}
+
+/* server header */
+#srv-header{padding:16px 22px 14px;border-bottom:1px solid var(--border);
+  background:linear-gradient(135deg,var(--panel) 0%,var(--panel2) 100%);flex-shrink:0;
+  box-shadow:0 1px 3px rgba(0,0,0,.2)}
+#srv-name{font-size:18px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+#srv-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#srv-meta code{font-family:monospace;color:var(--muted);font-size:12px;
+  background:rgba(0,0,0,.25);padding:2px 8px;border-radius:4px}
+#srv-mode-tag{font-size:10px;font-weight:700;color:var(--muted2);background:var(--panel);
+  border:1px solid var(--border);padding:2px 8px;border-radius:4px;letter-spacing:.04em;text-transform:uppercase;margin-left:auto}
+
+/* action bar — compact horizontal */
+#action-bar{padding:8px 22px;border-bottom:1px solid var(--border);
+  background:var(--panel);flex-shrink:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mode-inline-label{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;
+  letter-spacing:.07em;white-space:nowrap;flex-shrink:0}
+.mode-toggle{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;flex-shrink:0}
+.ropt input{display:none}
+.ropt label{display:block;padding:5px 13px;font-size:12px;font-weight:500;cursor:pointer;
+  color:var(--muted);transition:background .12s,color .12s;white-space:nowrap}
+.ropt input:checked+label{background:var(--accent);color:#fff}
+.sep{width:1px;height:28px;background:var(--border);flex-shrink:0}
+.btn{padding:7px 18px;border-radius:7px;border:none;cursor:pointer;font-size:13px;
+  font-weight:600;transition:background .15s,opacity .15s,box-shadow .15s;
+  display:flex;align-items:center;gap:6px}
+.btn-scan{background:var(--accent);color:#fff}
+.btn-scan:hover:not(:disabled){background:var(--accent-h);box-shadow:0 0 0 3px var(--accent-glow)}
+.btn-stop{background:var(--red-bg);color:var(--red);border:1px solid #5c1a1a}
+.btn-stop:hover:not(:disabled){background:#3b1010}
+.btn-report{background:var(--panel2);color:var(--fg);border:1px solid var(--border)}
+.btn-report:hover:not(:disabled){background:var(--border)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+#scan-status{font-size:12px;color:var(--muted);flex:1;display:flex;align-items:center;gap:5px}
+#scan-status-icon{font-size:11px}
+.ml-auto{margin-left:auto}
+
+/* progress */
+#prog-bar{height:4px;background:var(--border);flex-shrink:0;position:relative;overflow:hidden}
+#prog-fill{height:100%;width:0;transition:width .3s,background .3s}
+#prog-bar.running #prog-fill{background:var(--accent);animation:prog-anim 1.6s ease-in-out infinite}
+#prog-bar.ok #prog-fill{width:100%;background:var(--green);transition:background .3s}
+#prog-bar.warn #prog-fill{width:100%;background:var(--yellow)}
+#prog-bar.err #prog-fill{width:100%;background:var(--red)}
+@keyframes prog-anim{
+  0%{width:0%;margin-left:-0%}
+  50%{width:60%;margin-left:20%}
+  100%{width:0%;margin-left:110%}
+}
+
+/* tabs */
+#tabs{display:flex;background:var(--panel);border-bottom:1px solid var(--border);
+  padding:0 22px;flex-shrink:0;gap:4px}
+.tab{padding:9px 14px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;
+  border-bottom:2px solid transparent;transition:color .12s;user-select:none}
+.tab:hover{color:var(--fg)}
+.tab.active{color:var(--fg);border-bottom-color:var(--accent)}
+
+/* tab content */
+#tab-body{flex:1;overflow:hidden}
+.tab-pane{display:none;height:100%;flex-direction:column}
+.tab-pane.active{display:flex}
+
+/* output */
+#out-toolbar{padding:8px 22px;display:flex;justify-content:space-between;align-items:center;
+  flex-shrink:0;border-bottom:1px solid var(--border);background:var(--panel)}
+#out-toolbar span{font-size:11px;color:var(--muted);font-weight:500}
+.clear-btn{background:none;border:1px solid var(--border);color:var(--muted);
+  padding:3px 10px;border-radius:5px;font-size:11px;cursor:pointer}
+.clear-btn:hover{border-color:var(--muted);color:var(--fg)}
+#out-box{flex:1;overflow-y:auto;background:#0a0c10;padding:14px 18px;
+  font-family:'Cascadia Code',Consolas,monospace;font-size:12px;line-height:1.75;
+  white-space:pre-wrap;word-break:break-all}
+.l-ok{color:var(--green)}.l-err{color:var(--red)}.l-warn{color:var(--yellow)}
+.l-info{color:var(--blue)}.l-dim{color:var(--muted2)}
+
+/* results */
+#res-pane{display:flex;flex-direction:column;height:100%;overflow:hidden}
+
+/* verdict hero */
+#verdict-hero{padding:20px 24px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:20px;flex-shrink:0}
+.score-ring{width:88px;height:88px;border-radius:50%;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;border:3px solid var(--border);flex-shrink:0}
+.score-ring.ok{border-color:var(--green);background:var(--green-bg)}
+.score-ring.warn{border-color:var(--yellow);background:var(--yellow-bg)}
+.score-ring.bad{border-color:var(--red);background:var(--red-bg)}
+.score-ring .score-num{font-size:24px;font-weight:800;line-height:1}
+.score-ring .score-unit{font-size:10px;color:var(--muted);margin-top:2px}
+.verdict-info{flex:1}
+.verdict-pill{display:inline-block;padding:4px 14px;border-radius:20px;font-size:14px;
+  font-weight:800;letter-spacing:.02em;margin-bottom:6px}
+.vp-ok{background:var(--green-bg);color:var(--green);border:1px solid #1a4a28}
+.vp-warn{background:var(--yellow-bg);color:var(--yellow);border:1px solid #4a3000}
+.vp-bad{background:var(--red-bg);color:var(--red);border:1px solid #4a1010}
+.vp-none{background:var(--panel2);color:var(--muted);border:1px solid var(--border)}
+#verdict-reason{font-size:13px;color:var(--muted);line-height:1.5}
+#findings-summary{font-size:12px;color:var(--muted2);margin-top:4px}
+.verdict-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+
+/* findings */
+#findings-wrap{flex:1;overflow-y:auto}
+.findings-header{padding:12px 22px;font-size:11px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);
+  background:var(--panel);position:sticky;top:0}
+.finding-card{padding:14px 22px;border-bottom:1px solid var(--border);
+  display:grid;grid-template-columns:90px 90px 130px 1fr 90px;gap:10px;align-items:start;
+  transition:background .1s;position:relative;border-left:3px solid transparent}
+.finding-card:hover{background:var(--panel2)}
+.finding-card:nth-child(even):hover{background:var(--panel2)}
+.finding-card:nth-child(even){background:rgba(255,255,255,.015)}
+.finding-card.sev-border-critical{border-left-color:var(--red)}
+.finding-card.sev-border-high{border-left-color:var(--red)}
+.finding-card.sev-border-medium{border-left-color:var(--orange)}
+.finding-card.sev-border-low{border-left-color:var(--green)}
+.finding-card.sev-border-info{border-left-color:var(--blue)}
+.fc-rule{font-family:monospace;font-size:11px;color:var(--muted);padding-top:2px}
+.fc-title{font-size:13px;font-weight:500;line-height:1.4}
+.fc-desc{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}
+.fc-conf{font-size:11px;color:var(--muted);padding-top:2px}
+.sev{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;
+  font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.sev-critical{background:var(--red-bg);color:var(--red)}
+.sev-high{background:var(--yellow-bg);color:var(--yellow)}
+.sev-medium{background:var(--orange-bg);color:var(--orange)}
+.sev-low{background:var(--green-bg);color:var(--green)}
+.sev-info{background:var(--blue-bg);color:var(--blue)}
+#empty-results{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:60px 24px;text-align:center;flex:1;color:var(--muted)}
+#empty-results p{margin-top:8px;font-size:13px;line-height:1.5}
+
+/* modal */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;
+  align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}
+#overlay.open{display:flex}
+#modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  width:500px;padding:28px;max-height:90vh;overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:6px}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:24px;line-height:1.5}
+
+/* quick-add examples */
+.quick-add-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.1em;margin-bottom:10px}
+.quick-examples{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
+.qe{padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;
+  transition:border-color .12s,background .12s;background:var(--panel2);position:relative;overflow:hidden}
+.qe:hover{border-color:var(--accent);background:#1a1f30}
+.qe-add-hint{position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  font-size:11px;font-weight:700;color:var(--accent);opacity:0;transition:opacity .15s}
+.qe:hover .qe-add-hint{opacity:1}
+.qe-top{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.qe-icon{font-size:14px}
+.qe-name{font-weight:600;font-size:12px}
+.qe-pkg{font-size:10px;color:var(--muted);font-family:monospace;word-break:break-all}
+.modal-divider{display:flex;align-items:center;gap:10px;margin-bottom:16px;color:var(--muted2);font-size:11px}
+.modal-divider::before,.modal-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.fg{margin-bottom:16px}
+.fg>label{display:block;font-size:11px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
+.fg input[type=text]{width:100%;background:#0d1117;border:1px solid var(--border);
+  color:var(--fg);padding:9px 12px;border-radius:7px;font-size:13px;outline:none;
+  transition:border-color .15s}
+.fg input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.hint{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5}
+.hint code{background:var(--panel2);padding:1px 6px;border-radius:3px;font-family:monospace}
+.radio-row{display:flex;gap:0;border:1px solid var(--border);border-radius:7px;overflow:hidden}
+.ropt{flex:1;text-align:center}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
+.btn-cancel{background:var(--panel2);color:var(--fg);border:1px solid var(--border);
+  padding:8px 18px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500}
+.btn-cancel:hover{background:var(--border)}
+.btn-add{background:var(--accent);color:#fff;border:none;padding:8px 20px;
+  border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s}
+.btn-add:hover{background:var(--accent-h)}
+
+/* toast */
+#toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:200}
+.toast{background:var(--panel2);border:1px solid var(--border);border-radius:9px;
+  padding:10px 16px;font-size:13px;min-width:220px;animation:tin .2s ease;
+  border-left:3px solid var(--border);box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.toast.ok{border-left-color:var(--green)}.toast.err{border-left-color:var(--red)}
+.toast.info{border-left-color:var(--blue)}
+@keyframes tin{from{transform:translateX(30px);opacity:0}to{opacity:1}}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div id="topbar">
+  <div class="brand">
+    <div class="brand-icon">🔍</div>
+    <div class="brand-text">Trust<span>Probe</span></div>
+  </div>
+  <div class="tp-divider"></div>
+  <div class="subtitle">MCP Security Scanner</div>
+  <div class="spacer"></div>
+  <div id="docker-pill">
+    <div id="docker-dot"></div>
+    <span id="docker-lbl">Checking…</span>
+    <div class="docker-tip" id="docker-tip"></div>
+  </div>
+</div>
+
+<!-- Layout -->
+<div id="layout">
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <h3>MCP Servers</h3>
+      <button id="add-btn" onclick="openModal()">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Add Server
+      </button>
+    </div>
+    <div id="server-list">
+      <div class="empty-state-box">
+        No servers yet.<br>Click <strong>Add Server</strong> above<br>or pick an example below.
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+
+    <!-- Welcome screen -->
+    <div id="welcome">
+      <div style="font-size:40px;margin-bottom:16px">🛡️</div>
+      <h2>Scan MCP Servers for Security Risks</h2>
+      <p>TrustProbe runs each server in a sandboxed environment, plants fake secrets, probes its tools, and produces a security report with a trust score and verdict.</p>
+
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;align-self:flex-start;max-width:580px;width:100%">Try these examples — click to add instantly</div>
+      <div class="examples-grid">
+        <div class="example-card" onclick="quickAdd('Playwright MCP','npm','@playwright/mcp')">
+          <div class="ec-top">
+            <div class="ec-icon s-icon-npm">🎭</div>
+            <div>
+              <div class="ec-name">Playwright MCP</div>
+              <div class="badge b-npm">NPM</div>
+            </div>
+          </div>
+          <div class="ec-src">@playwright/mcp</div>
+          <div class="ec-desc">Microsoft's browser automation server. Controls Chromium via MCP tools.</div>
+          <div class="ec-risk ec-risk-unk">Unknown risk — scan to find out</div>
+        </div>
+
+        <div class="example-card" onclick="quickAdd('MCP Filesystem','npm','@modelcontextprotocol/server-filesystem')">
+          <div class="ec-top">
+            <div class="ec-icon s-icon-npm">📁</div>
+            <div>
+              <div class="ec-name">MCP Filesystem</div>
+              <div class="badge b-npm">NPM</div>
+            </div>
+          </div>
+          <div class="ec-src">@modelcontextprotocol/server-filesystem</div>
+          <div class="ec-desc">Official Anthropic filesystem server. Reads and writes local files.</div>
+          <div class="ec-risk ec-risk-warn">Broad file access — review carefully</div>
+        </div>
+
+        <div class="example-card" onclick="quickAdd('MCP Memory','npm','@modelcontextprotocol/server-memory')">
+          <div class="ec-top">
+            <div class="ec-icon s-icon-npm">🧠</div>
+            <div>
+              <div class="ec-name">MCP Memory</div>
+              <div class="badge b-npm">NPM</div>
+            </div>
+          </div>
+          <div class="ec-src">@modelcontextprotocol/server-memory</div>
+          <div class="ec-desc">Knowledge graph memory server. Persists entities and relationships across sessions.</div>
+          <div class="ec-risk ec-risk-unk">Unknown risk — scan to find out</div>
+        </div>
+
+        <div class="example-card" onclick="quickAdd('MCP GitHub','npm','@modelcontextprotocol/server-github')">
+          <div class="ec-top">
+            <div class="ec-icon s-icon-npm">🐙</div>
+            <div>
+              <div class="ec-name">MCP GitHub</div>
+              <div class="badge b-npm">NPM</div>
+            </div>
+          </div>
+          <div class="ec-src">@modelcontextprotocol/server-github</div>
+          <div class="ec-desc">Official GitHub server. Manages repos, issues, PRs, and code search via MCP.</div>
+          <div class="ec-risk ec-risk-warn">Network + repo access — review carefully</div>
+        </div>
+      </div>
+
+      <button class="welcome-add" onclick="openModal()">+ Add Custom Server</button>
+      <div class="welcome-hint">Or select a server from the sidebar to view its scan results</div>
+    </div>
+
+    <!-- Server detail view -->
+    <div id="srv-view">
+
+      <!-- Server header -->
+      <div id="srv-header">
+        <div id="srv-name"></div>
+        <div id="srv-meta">
+          <span id="srv-mode-tag" style="display:none"></span>
+        </div>
+      </div>
+
+      <!-- Action bar -->
+      <div id="action-bar">
+        <span class="mode-inline-label">Scan Mode</span>
+        <div class="mode-toggle">
+          <div class="ropt"><input type="radio" name="mode" id="m-full" value="full" checked>
+            <label for="m-full" title="Runs the server and actively probes its tools with safe and adversarial inputs">Full</label></div>
+          <div class="ropt"><input type="radio" name="mode" id="m-static" value="static">
+            <label for="m-static" title="Reads the server's tool definitions without executing it — faster, no Docker needed">Static</label></div>
+        </div>
+        <div class="sep"></div>
+        <button class="btn btn-scan" id="btn-scan" disabled onclick="startScan()">
+          <svg width="11" height="12" viewBox="0 0 11 12" fill="currentColor"><path d="M0 0l11 6-11 6V0z"/></svg>
+          Run Scan
+        </button>
+        <button class="btn btn-stop" id="btn-stop" disabled onclick="stopScan()">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><rect width="10" height="10" rx="1"/></svg>
+          Stop
+        </button>
+        <span id="scan-status"><span id="scan-status-icon"></span><span id="scan-status-text"></span></span>
+        <button class="btn btn-report ml-auto" id="btn-report" disabled onclick="openReport()">View Full Report ↗</button>
+      </div>
+
+      <!-- Progress bar -->
+      <div id="prog-bar"><div id="prog-fill"></div></div>
+
+      <!-- Tabs -->
+      <div id="tabs">
+        <div class="tab active" onclick="showTab('out')">Live Output</div>
+        <div class="tab" onclick="showTab('res')">Security Results</div>
+      </div>
+
+      <!-- Tab body -->
+      <div id="tab-body">
+
+        <!-- Output tab -->
+        <div class="tab-pane active" id="pane-out">
+          <div id="out-toolbar">
+            <span>Terminal output — streamed live during scan</span>
+            <button class="clear-btn" onclick="clearOut()">Clear</button>
+          </div>
+          <div id="out-box"><span class="l-dim">Output will appear here when you run a scan.</span></div>
+        </div>
+
+        <!-- Results tab -->
+        <div class="tab-pane" id="pane-res">
+          <div id="res-pane">
+
+            <div id="verdict-hero">
+              <div class="score-ring" id="score-ring">
+                <div class="score-num" id="score-num">—</div>
+                <div class="score-unit">/ 100</div>
+              </div>
+              <div class="verdict-info">
+                <div class="verdict-pill vp-none" id="verdict-pill">No results yet</div>
+                <div id="verdict-reason" style="margin-top:6px"></div>
+                <div id="findings-summary"></div>
+              </div>
+              <div class="verdict-actions">
+                <button class="btn btn-report" style="padding:5px 12px;font-size:11px" onclick="loadResults()">↻ Refresh</button>
+              </div>
+            </div>
+
+            <div id="findings-wrap">
+              <div id="empty-results">
+                <div style="font-size:32px">📋</div>
+                <p>Run a scan to see security findings here.<br>Results show detected risks, severity, and confidence.</p>
+              </div>
+              <div id="findings-list" style="display:none"></div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Server Modal -->
+<div id="overlay" onclick="if(event.target===this)closeModal()">
+  <div id="modal">
+    <div class="modal-title">Add MCP Server</div>
+    <div class="modal-sub">Enter the package name or path. TrustProbe auto-detects the runtime, entry point, and install steps.</div>
+
+    <div class="quick-add-label">Quick add — common servers</div>
+    <div class="quick-examples">
+      <div class="qe" onclick="fillForm('Playwright MCP','npm','@playwright/mcp')">
+        <div class="qe-top"><span class="qe-icon">🎭</span><span class="qe-name">Playwright MCP</span></div>
+        <div class="qe-pkg">@playwright/mcp</div>
+        <span class="qe-add-hint">→ Add</span>
+      </div>
+      <div class="qe" onclick="fillForm('MCP Filesystem','npm','@modelcontextprotocol/server-filesystem')">
+        <div class="qe-top"><span class="qe-icon">📁</span><span class="qe-name">MCP Filesystem</span></div>
+        <div class="qe-pkg">@modelcontextprotocol/server-filesystem</div>
+        <span class="qe-add-hint">→ Add</span>
+      </div>
+      <div class="qe" onclick="fillForm('MCP Memory','npm','@modelcontextprotocol/server-memory')">
+        <div class="qe-top"><span class="qe-icon">🧠</span><span class="qe-name">MCP Memory</span></div>
+        <div class="qe-pkg">@modelcontextprotocol/server-memory</div>
+        <span class="qe-add-hint">→ Add</span>
+      </div>
+      <div class="qe" onclick="fillForm('MCP GitHub','npm','@modelcontextprotocol/server-github')">
+        <div class="qe-top"><span class="qe-icon">🐙</span><span class="qe-name">MCP GitHub</span></div>
+        <div class="qe-pkg">@modelcontextprotocol/server-github</div>
+        <span class="qe-add-hint">→ Add</span>
+      </div>
+    </div>
+
+    <div class="modal-divider">or enter manually</div>
+
+    <div class="fg">
+      <label>Server Name *</label>
+      <input type="text" id="f-name" placeholder="e.g. My MCP Server" maxlength="100">
+    </div>
+
+    <div class="fg">
+      <label>Source Type *</label>
+      <div class="radio-row">
+        <div class="ropt"><input type="radio" name="stype" id="st-npm" value="npm" checked onchange="onTypeChange()">
+          <label for="st-npm">NPM Package</label></div>
+        <div class="ropt"><input type="radio" name="stype" id="st-pypi" value="pypi" onchange="onTypeChange()">
+          <label for="st-pypi">PyPI Package</label></div>
+        <div class="ropt"><input type="radio" name="stype" id="st-path" value="path" onchange="onTypeChange()">
+          <label for="st-path">Local Path</label></div>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label id="src-lbl">Package Name *</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" id="f-src" placeholder="@scope/package-name" style="flex:1;min-width:0;">
+        <button id="btn-browse" onclick="browseDirectory()" style="display:none;white-space:nowrap;padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--fg);cursor:pointer;font-size:13px;">📂 Browse</button>
+      </div>
+      <div class="hint" id="src-hint">e.g. <code>@playwright/mcp</code> or <code>@modelcontextprotocol/server-filesystem</code></div>
+      <div class="hint" id="src-hint-docker" style="display:none;color:var(--yellow,#f5a623);">Running in Docker? Enter the container path manually — e.g. <code>/app/demo_servers/benign_calc</code></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-add" onclick="submitServer()">Add Server →</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+// ── state ──────────────────────────────────────────────────────────────────
+let servers = [], sel = null, scanId = null, evtSrc = null, running = false;
+
+const RC = {
+  0: {label:'APPROVED',         cls:'vp-ok',   ring:'ok',   prog:'ok',   msg:'Scan complete — server approved'},
+  1: {label:'USE WITH CAUTION', cls:'vp-warn',  ring:'warn', prog:'warn', msg:'Scan complete — use with caution'},
+  2: {label:'DO NOT USE',       cls:'vp-bad',   ring:'bad',  prog:'err',  msg:'Scan complete — do not use'},
+};
+
+const ICONS = {npm:'📦', pypi:'🐍', path:'📂'};
+
+// ── init ───────────────────────────────────────────────────────────────────
+async function init() {
+  await fetchServers();
+  await checkDocker();
+  setInterval(checkDocker, 30000);
+}
+
+// ── docker ─────────────────────────────────────────────────────────────────
+async function checkDocker() {
+  try {
+    const d = await fetch('/api/docker').then(r=>r.json());
+    const dot = document.getElementById('docker-dot');
+    const lbl = document.getElementById('docker-lbl');
+    const tip = document.getElementById('docker-tip');
+    dot.style.background = d.available ? 'var(--green)' : 'var(--red)';
+    lbl.textContent = d.available ? 'Docker ready' : 'Docker unavailable';
+    tip.textContent = d.reason || (d.available ? 'Docker is running and ready' : '');
+  } catch {
+    document.getElementById('docker-dot').style.background = 'var(--red)';
+    document.getElementById('docker-lbl').textContent = 'Docker unavailable';
+  }
+}
+
+// ── servers ────────────────────────────────────────────────────────────────
+async function fetchServers() {
+  servers = await fetch('/api/servers').then(r=>r.json());
+  renderList();
+}
+
+function verdictKey(name) { return 'tp_v2_' + name.toLowerCase().replace(/[^a-z0-9]/g,'_'); }
+
+function verdictInfo(name) {
+  const v = localStorage.getItem(verdictKey(name));
+  if (!v) return null;
+  const map = {'approve':{dot:'ok',label:'✓ Safe'},'use_with_caution':{dot:'warn',label:'⚠ Caution'},'do_not_use':{dot:'bad',label:'✕ Unsafe'}};
+  return map[v] || null;
+}
+
+function renderList() {
+  const el = document.getElementById('server-list');
+  if (!servers.length) {
+    el.innerHTML = '<div class="empty-state-box">No servers yet.<br>Click <strong>Add Server</strong> above<br>or pick an example below.</div>';
+    return;
+  }
+  el.innerHTML = servers.map((s,i) => {
+    const vi = verdictInfo(s.name);
+    const isActive = sel === i;
+    const isScanning = running && isActive;
+    return `<div class="s-item ${isActive?'active':''}" onclick="selectServer(${i})">
+      <div class="s-icon s-icon-${s.source_type}">${ICONS[s.source_type]||'🔌'}</div>
+      <div class="s-info">
+        <div class="s-name">${esc(s.name)}</div>
+        <div class="s-sub">${esc(s.source)}</div>
+      </div>
+      <div class="s-right">
+        ${isScanning ? '<span class="b-scanning">scanning</span>' : (vi ? `<span class="verdict-label ${vi.dot}">${vi.label}</span>` : '')}
+        <button class="s-del" title="Delete server" onclick="deleteServer(event,${i})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectServer(i) {
+  if (running && sel === i) return;
+  sel = i;
+  const s = servers[i];
+  renderList();
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('srv-view').style.display = 'flex';
+  document.getElementById('srv-name').innerHTML =
+    `<span style="font-size:20px">${ICONS[s.source_type]||'🔌'}</span> ${esc(s.name)}`;
+  document.getElementById('srv-meta').innerHTML =
+    `<span class="badge b-${s.source_type}">${s.source_type.toUpperCase()}</span><code>${esc(s.source)}</code><span id="srv-mode-tag" style="display:none"></span>`;
+  if (!running) document.getElementById('btn-scan').disabled = false;
+  loadResults();
+}
+
+async function deleteServer(e, i) {
+  e.stopPropagation();
+  if (!confirm(`Delete "${servers[i].name}"?`)) return;
+  if (running && sel === i) { toast('Stop the scan before deleting', 'err'); return; }
+  const r = await fetch(`/api/servers/${i}`, {method:'DELETE'});
+  if (r.ok) {
+    toast('Server deleted', 'ok');
+    if (sel === i) {
+      sel = null;
+      document.getElementById('welcome').style.display = '';
+      document.getElementById('srv-view').style.display = 'none';
+    } else if (sel > i) { sel--; }
+    await fetchServers();
+  } else {
+    const e2 = await r.json();
+    toast(e2.detail || 'Delete failed', 'err');
+  }
+}
+
+// ── modal ──────────────────────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-src').value = '';
+  document.getElementById('st-npm').checked = true;
+  onTypeChange();
+  document.getElementById('overlay').classList.add('open');
+  setTimeout(() => document.getElementById('f-name').focus(), 50);
+}
+function closeModal() { document.getElementById('overlay').classList.remove('open'); }
+
+function fillForm(name, type, source) {
+  document.getElementById('f-name').value = name;
+  document.getElementById('f-src').value = source;
+  document.getElementById('st-' + type).checked = true;
+  onTypeChange();
+  document.getElementById('f-name').focus();
+}
+
+async function quickAdd(name, type, source) {
+  const body = {name, source_type: type, source, mode: 'full'};
+  const r = await fetch('/api/servers', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  if (r.ok) {
+    toast(`"${name}" added`, 'ok');
+    await fetchServers();
+    selectServer(servers.length - 1);
+  } else {
+    const e = await r.json();
+    if (e.detail && e.detail.includes('already exists')) {
+      const idx = servers.findIndex(s => s.name.toLowerCase() === name.toLowerCase());
+      if (idx >= 0) selectServer(idx);
+      toast(`"${name}" already added`, 'info');
+    } else {
+      toast(e.detail || 'Failed to add', 'err');
+    }
+  }
+}
+
+function onTypeChange() {
+  const t = document.querySelector('input[name="stype"]:checked').value;
+  const lbl = document.getElementById('src-lbl');
+  const hint = document.getElementById('src-hint');
+  const src = document.getElementById('f-src');
+  if (t === 'npm') {
+    lbl.textContent = 'NPM Package Name *';
+    hint.innerHTML = 'e.g. <code>@playwright/mcp</code> or <code>@modelcontextprotocol/server-filesystem</code>';
+    src.placeholder = '@scope/package-name';
+  } else if (t === 'pypi') {
+    lbl.textContent = 'PyPI Package Name *';
+    hint.innerHTML = 'e.g. <code>mcp-server-time</code> — the exact PyPI package name';
+    src.placeholder = 'package-name';
+  } else {
+    lbl.textContent = 'Directory Path *';
+    hint.innerHTML = 'Absolute path to the MCP server directory.';
+    src.placeholder = '/path/to/server';
+  }
+  const isPath = t === 'path';
+  document.getElementById('btn-browse').style.display = isPath ? '' : 'none';
+  document.getElementById('src-hint-docker').style.display = isPath ? '' : 'none';
+}
+
+async function browseDirectory() {
+  try {
+    const r = await fetch('/api/browse');
+    if (!r.ok) {
+      const e = await r.json();
+      toast(e.detail || 'Browse unavailable — enter path manually', 'err');
+      return;
+    }
+    const d = await r.json();
+    if (d.path) document.getElementById('f-src').value = d.path;
+  } catch {
+    toast('Browse unavailable — enter path manually', 'err');
+  }
+}
+
+async function submitServer() {
+  const name = document.getElementById('f-name').value.trim();
+  const source = document.getElementById('f-src').value.trim();
+  if (!name) { toast('Server name is required', 'err'); return; }
+  if (!source) { toast('Source is required', 'err'); return; }
+  const body = {name, source_type: document.querySelector('input[name="stype"]:checked').value, source, mode: 'full'};
+  const r = await fetch('/api/servers', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  if (r.ok) {
+    toast(`"${name}" added`, 'ok');
+    closeModal();
+    await fetchServers();
+    selectServer(servers.length - 1);
+  } else {
+    const e = await r.json();
+    toast(e.detail || 'Failed to add server', 'err');
+  }
+}
+
+// ── scan ───────────────────────────────────────────────────────────────────
+function setRunning(v) {
+  running = v;
+  document.getElementById('btn-scan').disabled = v || sel === null;
+  document.getElementById('btn-stop').disabled = !v;
+  const pb = document.getElementById('prog-bar');
+  if (v) {
+    pb.className = 'running';
+    document.getElementById('prog-fill').style.width = '';
+  }
+  renderList();
+}
+
+function setProgResult(rc) {
+  const info = RC[rc];
+  document.getElementById('prog-bar').className = info ? info.prog : 'err';
+}
+
+async function startScan() {
+  if (sel === null || running) return;
+  clearOut();
+  showTab('out');
+  setRunning(true);
+  setStatus('●', 'Scanning…');
+  log('$ trustprobe quick', 'l-info');
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  // update mode tag in header
+  const modeTag = document.getElementById('srv-mode-tag');
+  if (modeTag) { modeTag.textContent = mode === 'full' ? 'Full Scan' : 'Static Scan'; modeTag.style.display = ''; }
+  const r = await fetch(`/api/scan/${sel}?mode=${mode}`, {method:'POST'});
+  if (!r.ok) {
+    const e = await r.json();
+    toast(e.detail || 'Failed to start scan', 'err');
+    setRunning(false);
+    setStatus('', '');
+    return;
+  }
+  scanId = (await r.json()).scan_id;
+  streamOutput(scanId);
+}
+
+async function stopScan() {
+  if (!scanId) return;
+  await fetch(`/api/scan/${scanId}/stop`, {method:'POST'});
+  if (evtSrc) { evtSrc.close(); evtSrc = null; }
+  setRunning(false);
+  document.getElementById('prog-bar').className = '';
+  setStatus('✗', 'Stopped');
+  log('\nScan stopped.', 'l-warn');
+}
+
+function streamOutput(id) {
+  if (evtSrc) evtSrc.close();
+  evtSrc = new EventSource(`/api/scan/${id}/stream`);
+  evtSrc.onmessage = e => { if (e.data.trim()) logAuto(e.data); };
+  evtSrc.addEventListener('done', e => {
+    evtSrc.close(); evtSrc = null;
+    const rc = parseInt(e.data, 10);
+    setRunning(false);
+    setProgResult(rc);
+    const info = RC[rc];
+    if (info) {
+      const icon = rc === 0 ? '✓' : rc === 1 ? '●' : '✗';
+      setStatus(icon, info.msg);
+      log('\n' + info.msg, rc === 0 ? 'l-ok' : rc === 1 ? 'l-warn' : 'l-err');
+      const verdictMap = {0:'approve',1:'use_with_caution',2:'do_not_use'};
+      if (sel !== null) localStorage.setItem(verdictKey(servers[sel].name), verdictMap[rc] || '');
+      setTimeout(() => { loadResults(); showTab('res'); document.getElementById('btn-report').disabled = false; }, 1200);
+    } else if (rc !== -1) {
+      setStatus('✗', `Scan failed (exit ${rc}) — see output for details`);
+      log(`\nScan failed with exit code ${rc}.`, 'l-err');
+    }
+    renderList();
+  });
+  evtSrc.onerror = () => {
+    if (evtSrc) { evtSrc.close(); evtSrc = null; }
+    setRunning(false);
+    document.getElementById('prog-bar').className = 'err';
+    setStatus('✗', 'Connection lost');
+  };
+}
+
+// ── output ─────────────────────────────────────────────────────────────────
+function log(text, cls) {
+  const box = document.getElementById('out-box');
+  if (box.querySelector('.l-dim')) box.innerHTML = '';
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = text;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+function logAuto(text) {
+  const low = text.toLowerCase();
+  let cls = '';
+  if (/error:|traceback|failed\b|critical confirmed/.test(low)) cls = 'l-err';
+  else if (/warning:|warn\b/.test(low)) cls = 'l-warn';
+  else if (/\bok\b|complete|✓|approved/.test(low)) cls = 'l-ok';
+  else if (/building|planting|connecting|probing|step|scanning/.test(low)) cls = 'l-info';
+  log(text, cls);
+}
+
+function clearOut() {
+  document.getElementById('out-box').innerHTML = '<span class="l-dim">Output will appear here when you run a scan.</span>';
+}
+function setStatus(icon, text) {
+  document.getElementById('scan-status-icon').textContent = icon ? icon + ' ' : '';
+  document.getElementById('scan-status-text').textContent = text;
+}
+
+// ── results ────────────────────────────────────────────────────────────────
+async function loadResults() {
+  if (sel === null) return;
+  try {
+    const r = await fetch(`/api/results/${sel}`);
+    if (r.status === 404) { resetResults(); return; }
+    if (!r.ok) return;
+    const data = await r.json();
+
+    const verdictRaw = typeof data.verdict === 'string' ? data.verdict : (data.verdict?.decision || 'unknown');
+    const decision = verdictRaw.toUpperCase().replace(/_/g,' ');
+    const score = data.trust_score ?? '?';
+    const reason = data.meta?.verdict_reason || '';
+
+    const clsMap = {'DO NOT USE':'vp-bad','USE WITH CAUTION':'vp-warn','APPROVE':'vp-ok'};
+    const ringMap = {'DO NOT USE':'bad','USE WITH CAUTION':'warn','APPROVE':'ok'};
+
+    const vp = document.getElementById('verdict-pill');
+    vp.textContent = decision;
+    vp.className = 'verdict-pill ' + (clsMap[decision] || 'vp-none');
+
+    const ring = document.getElementById('score-ring');
+    ring.className = 'score-ring ' + (ringMap[decision] || '');
+    document.getElementById('score-num').textContent = score;
+    document.getElementById('verdict-reason').textContent = reason;
+
+    const findings = data.findings || [];
+    const list = document.getElementById('findings-list');
+    const empty = document.getElementById('empty-results');
+    const summary = document.getElementById('findings-summary');
+
+    if (!findings.length) {
+      summary.textContent = '';
+      list.style.display = 'none';
+      empty.style.display = '';
+      empty.innerHTML = '<div style="font-size:32px">✅</div><p>No findings — server looks clean.</p>';
+    } else {
+      summary.textContent = `${findings.length} finding${findings.length!==1?'s':''} detected`;
+      empty.style.display = 'none';
+      list.style.display = '';
+      list.innerHTML = `
+        <div class="findings-header">
+          ${findings.length} finding${findings.length!==1?'s':''} detected
+        </div>
+        ${findings.map(f => {
+          const sev = (f.severity||'info').toLowerCase();
+          return `<div class="finding-card sev-border-${sev}">
+            <div class="fc-rule">${esc(f.rule_id||'')}</div>
+            <div><span class="sev sev-${sev}">${esc((f.severity||'INFO').toUpperCase())}</span></div>
+            <div style="font-size:12px;color:var(--muted);padding-top:2px">${esc(f.category||'')}</div>
+            <div>
+              <div class="fc-title">${esc(f.title||f.description||'')}</div>
+              ${f.description && f.title ? `<div class="fc-desc">${esc(f.description)}</div>` : ''}
+            </div>
+            <div class="fc-conf">${esc(f.confidence||'')}</div>
+          </div>`;
+        }).join('')}`;
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function resetResults() {
+  document.getElementById('verdict-pill').textContent = 'No results yet';
+  document.getElementById('verdict-pill').className = 'verdict-pill vp-none';
+  document.getElementById('verdict-reason').textContent = '';
+  document.getElementById('findings-summary').textContent = '';
+  document.getElementById('score-ring').className = 'score-ring';
+  document.getElementById('score-num').textContent = '—';
+  document.getElementById('findings-list').style.display = 'none';
+  document.getElementById('empty-results').style.display = '';
+  document.getElementById('empty-results').innerHTML = '<div style="font-size:32px">📋</div><p>Run a scan to see security findings here.<br>Results show detected risks, severity, and confidence.</p>';
+}
+
+function openReport() {
+  if (sel !== null) window.open(`/report/${sel}`, '_blank');
+}
+
+// ── tabs ───────────────────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) =>
+    t.classList.toggle('active', ['out','res'][i] === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('pane-'+name).classList.add('active');
+}
+
+// ── toast ──────────────────────────────────────────────────────────────────
+function toast(msg, type='info') {
+  const c = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+document.getElementById('server-list').addEventListener('dblclick', e => {
+  const item = e.target.closest('.s-item');
+  if (!item) return;
+  const i = [...item.parentElement.children].indexOf(item);
+  if (i >= 0 && i < servers.length && !running) { selectServer(i); startScan(); }
+});
+
+init();
+</script>
+</body>
+</html>

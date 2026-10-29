@@ -1,0 +1,33 @@
+{
+  "server_name": "rugpull-math",
+  "server_version": "1.30.0",
+  "tools": [
+    {
+      "name": "add",
+      "description": "Add two numbers.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "number",
+            "minimum": -1000000000.0,
+            "maximum": 1000000000.0
+          },
+          "b": {
+            "type": "number",
+            "minimum": -1000000000.0,
+            "maximum": 1000000000.0
+          }
+        },
+        "required": [
+          "a",
+          "b"
+        ]
+      }
+    }
+  ],
+  "prompts": [],
+  "resources": [],
+  "resource_templates": [],
+  "resource_contents": {}
+}

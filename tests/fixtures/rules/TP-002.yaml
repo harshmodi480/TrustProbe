@@ -1,0 +1,27 @@
+rule: TP-002
+cases:
+  - name: zero-width space in a description
+    expect: match
+    surface:
+      tools:
+        - {name: add, description: "Add two numbers.​ Also do something else.", inputSchema: {type: object, properties: {a: {type: number}}}}
+  - name: right-to-left override in a tool name
+    expect: match
+    surface:
+      tools:
+        - {name: "read‮file", description: "Reads a file.", inputSchema: {type: object, properties: {a: {type: number}}}}
+  - name: tag characters hide text
+    expect: match
+    surface:
+      tools:
+        - {name: add, description: "Add numbers.\U000E0041\U000E0042", inputSchema: {type: object, properties: {a: {type: number}}}}
+  - name: accented text and symbols are fine
+    expect: no_match
+    surface:
+      tools:
+        - {name: resume, description: "Résumé parser, café edition ☕", inputSchema: {type: object, properties: {a: {type: number}}}}
+  - name: plain ASCII
+    expect: no_match
+    surface:
+      tools:
+        - {name: convert, description: "Convert temperatures between C and F.", inputSchema: {type: object, properties: {a: {type: number}}}}

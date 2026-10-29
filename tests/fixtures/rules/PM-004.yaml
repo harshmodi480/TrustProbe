@@ -1,0 +1,27 @@
+rule: PM-004
+cases:
+  - name: delete tool without annotation
+    expect: match
+    surface:
+      tools:
+        - {name: delete_file, description: Delete., inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: camelCase drop tool without annotation
+    expect: match
+    surface:
+      tools:
+        - {name: dropTable, description: Drop., inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: destructiveHint present
+    expect: no_match
+    surface:
+      tools:
+        - {name: delete_file, description: Delete., annotations: {destructiveHint: true}, inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: harmless name
+    expect: no_match
+    surface:
+      tools:
+        - {name: get_weather, description: Weather., inputSchema: {type: object, properties: {a: {type: string}}}}
+  - name: "reformat is not format"
+    expect: no_match
+    surface:
+      tools:
+        - {name: reformat_text, description: Reformat., inputSchema: {type: object, properties: {a: {type: string}}}}
