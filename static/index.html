@@ -580,6 +580,12 @@ body{background:var(--bg);color:var(--fg);font-family:'Segoe UI',system-ui,sans-
       <div class="hint" id="src-hint-docker" style="display:none;color:var(--yellow,#f5a623);">Running in Docker? Enter the container path manually — e.g. <code>/app/demo_servers/benign_calc</code></div>
     </div>
 
+    <div class="fg" id="fg-args">
+      <label id="args-lbl">Server Arguments <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+      <input type="text" id="f-args" placeholder="">
+      <div class="hint" id="args-hint">Extra arguments appended to the start command — e.g. for <code>@modelcontextprotocol/server-filesystem</code> enter the allowed directory: <code>C:/Users/you/projects</code></div>
+    </div>
+
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-add" onclick="submitServer()">Add Server →</button>
@@ -701,6 +707,7 @@ async function deleteServer(e, i) {
 function openModal() {
   document.getElementById('f-name').value = '';
   document.getElementById('f-src').value = '';
+  document.getElementById('f-args').value = '';
   document.getElementById('st-npm').checked = true;
   onTypeChange();
   document.getElementById('overlay').classList.add('open');
@@ -783,7 +790,8 @@ async function submitServer() {
   if (source_type === 'path' && /^@?[a-z0-9][\w.-]*\//.test(source)) {
     toast('This looks like an NPM package name. Change Source Type to "NPM Package".', 'err'); return;
   }
-  const body = {name, source_type, source, mode: 'full'};
+  const server_args = document.getElementById('f-args').value.trim();
+  const body = {name, source_type, source, mode: 'full', server_args};
   const r = await fetch('/api/servers', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
   if (r.ok) {
     toast(`"${name}" added`, 'ok');

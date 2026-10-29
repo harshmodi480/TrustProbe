@@ -71,6 +71,9 @@ def _build_cmd(server: dict, mode_override: str | None = None) -> list[str]:
            "--yes", "--out", str(out)]
     if mode == "static":
         cmd.append("--static-only")
+    server_args = server.get("server_args", "").strip()
+    if server_args:
+        cmd += ["--command", server_args]
     return cmd
 
 
@@ -118,6 +121,7 @@ class ServerIn(BaseModel):
     source_type: str
     source: str
     mode: str = "full"
+    server_args: str = ""
 
     @field_validator("name")
     @classmethod
