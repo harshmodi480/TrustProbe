@@ -69,32 +69,50 @@ def load_result(path: Path) -> dict:
 def _npm_global_dir() -> Path | None:
     """Return the npm global prefix directory on Windows (AppData/Roaming/npm), creating it if missing."""
     import platform
+    import shutil
     if platform.system() != "Windows":
+        return None
+    if not shutil.which("npm"):
         return None
     npm_dir = Path.home() / "AppData" / "Roaming" / "npm"
     npm_dir.mkdir(parents=True, exist_ok=True)
     return npm_dir
 
 
+def _check_executable(name: str, install_hint: str) -> str:
+    """Return the full path to `name` or raise SandboxError with an install hint."""
+    import shutil
+    path = shutil.which(name)
+    if not path:
+        raise SandboxError(f"'{name}' not found on PATH — {install_hint}")
+    return path
+
+
 def _host_command(cfg: ScanConfig) -> tuple[str, list[str], Path | None]:
     """Return (executable, args, cwd) to launch the MCP server directly on the host, without Docker."""
     src = cfg.server.source
     if src.type == "npm":
+        npx = _check_executable("npx", "install Node.js from https://nodejs.org")
         pkg = src.package + ("@" + src.version if src.version else "")
         npm_dir = _npm_global_dir()
         args = ["--yes", pkg]
         if npm_dir is not None:
             args = ["--prefix", str(npm_dir), "--yes", pkg]
-        return "npx", args, None
+        return npx, args, None
     if src.type == "pypi":
+        uvx = _check_executable("uvx", "install uv from https://docs.astral.sh/uv/getting-started/installation/")
         pkg = src.package + ("==" + src.version if src.version else "")
-        return "uvx", [pkg], None
+        return uvx, [pkg], None
     # path source — run the configured command inside the source directory.
     # Replace "python" / "python3" with the current venv interpreter so the
     # server can import packages installed alongside trustprobe.
     cmd = list(cfg.server.command)
     if cmd and cmd[0] in ("python", "python3"):
         cmd[0] = sys.executable
+    else:
+        _check_executable(cmd[0], f"install '{cmd[0]}' and ensure it is on PATH")
+    if cfg.source_path and not cfg.source_path.exists():
+        raise SandboxError(f"server directory not found: {cfg.source_path}")
     return cmd[0], cmd[1:], cfg.source_path
 
 
@@ -184,7 +202,8 @@ def run_server(cfg: ScanConfig, sandbox: Sandbox, nonce: str, *, probe: bool,
 def enumerate_in_sandbox(cfg: ScanConfig, sandbox: Sandbox) -> ServerSurface:
     """Read everything the server advertises, without calling any tool."""
     data = run_server(cfg, sandbox, "00000000", probe=False)
-    assert data.surface is not None
+    if data.surface is None:
+        raise SandboxError("server did not provide tool inventory — it may have exited before completing the MCP handshake")
     return data.surface
 
 

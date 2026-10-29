@@ -101,6 +101,12 @@ def _launch(cmd: list[str], server_id: int) -> str:
                 _scans[scan_id]["lines"].append(line)
             proc.wait()
             _scans[scan_id]["returncode"] = proc.returncode
+        except FileNotFoundError as exc:
+            _scans[scan_id]["lines"].append(
+                f"error: command not found — {exc}\n"
+                "hint: ensure Node.js/npm (for npm sources) or Python (for path sources) is installed and on PATH\n"
+            )
+            _scans[scan_id]["returncode"] = 3
         except Exception as exc:
             _scans[scan_id]["lines"].append(f"error: {exc}\n")
             _scans[scan_id]["returncode"] = 3
@@ -189,13 +195,22 @@ def delete_server(sid: int):
 
 @app.post("/api/scan/{sid}")
 def start_scan(sid: int, mode: Optional[str] = None):
+    import shutil
     servers = _load()
     if not (0 <= sid < len(servers)):
         raise HTTPException(404, "Server not found")
     with _lock:
         if sid in _active:
             raise HTTPException(409, "A scan is already running for this server — stop it first")
-    cmd = _build_cmd(servers[sid], mode_override=mode)
+    server = servers[sid]
+    # Validate path sources exist before launching
+    if server["source_type"] == "path":
+        p = Path(server["source"])
+        if not p.exists():
+            raise HTTPException(400, f"Server directory not found: {server['source']}")
+        if not p.is_dir():
+            raise HTTPException(400, f"Server source must be a directory, not a file: {server['source']}")
+    cmd = _build_cmd(server, mode_override=mode)
     return {"scan_id": _launch(cmd, sid)}
 
 

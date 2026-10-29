@@ -617,7 +617,9 @@ async function init() {
 // ── docker ─────────────────────────────────────────────────────────────────
 async function checkDocker() {
   try {
-    const d = await fetch('/api/docker').then(r=>r.json());
+    const r = await fetch('/api/docker');
+    if (!r.ok) throw new Error('docker check failed');
+    const d = await r.json();
     const dot = document.getElementById('docker-dot');
     const lbl = document.getElementById('docker-lbl');
     const tip = document.getElementById('docker-tip');
@@ -632,7 +634,11 @@ async function checkDocker() {
 
 // ── servers ────────────────────────────────────────────────────────────────
 async function fetchServers() {
-  servers = await fetch('/api/servers').then(r=>r.json());
+  try {
+    const r = await fetch('/api/servers');
+    if (!r.ok) { toast('Failed to load servers — refresh the page', 'err'); return; }
+    servers = await r.json();
+  } catch { toast('Could not reach the server — is the web app running?', 'err'); }
   renderList();
 }
 
@@ -769,8 +775,9 @@ async function browseDirectory() {
   try {
     const r = await fetch('/api/browse');
     if (!r.ok) {
-      const e = await r.json();
-      toast(e.detail || 'Browse unavailable — enter path manually', 'err');
+      let msg = 'Browse unavailable — enter path manually';
+      try { const e = await r.json(); msg = e.detail || msg; } catch {}
+      toast(msg, 'err');
       return;
     }
     const d = await r.json();
@@ -847,7 +854,10 @@ async function startScan() {
 
 async function stopScan() {
   if (!scanId) return;
-  await fetch(`/api/scan/${scanId}/stop`, {method:'POST'});
+  try {
+    const r = await fetch(`/api/scan/${scanId}/stop`, {method:'POST'});
+    if (!r.ok) toast('Stop request failed — scan may still be running', 'err');
+  } catch { toast('Could not reach the server to stop the scan', 'err'); }
   if (evtSrc) { evtSrc.close(); evtSrc = null; }
   setRunning(false);
   document.getElementById('prog-bar').className = '';
@@ -883,6 +893,8 @@ function streamOutput(id) {
     setRunning(false);
     document.getElementById('prog-bar').className = 'err';
     setStatus('✗', 'Connection lost');
+    toast('Connection to server lost — the scan may still be running in the background', 'err');
+    log('\nConnection lost — check server logs.', 'l-err');
   };
 }
 
@@ -921,8 +933,19 @@ async function loadResults() {
   try {
     const r = await fetch(`/api/results/${sel}`);
     if (r.status === 404) { resetResults(); return; }
-    if (!r.ok) return;
-    const data = await r.json();
+    if (!r.ok) {
+      let msg = 'Failed to load results';
+      try { const e = await r.json(); msg = e.detail || msg; } catch {}
+      document.getElementById('empty-results').style.display = '';
+      document.getElementById('empty-results').innerHTML = `<div style="font-size:32px">⚠️</div><p style="color:var(--red)">${msg}</p>`;
+      return;
+    }
+    let data;
+    try { data = await r.json(); } catch {
+      document.getElementById('empty-results').style.display = '';
+      document.getElementById('empty-results').innerHTML = '<div style="font-size:32px">⚠️</div><p style="color:var(--red)">Results file is corrupted — re-run the scan.</p>';
+      return;
+    }
 
     const verdictRaw = typeof data.verdict === 'string' ? data.verdict : (data.verdict?.decision || 'unknown');
     const decision = verdictRaw.toUpperCase().replace(/_/g,' ');
