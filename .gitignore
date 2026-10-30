@@ -15,6 +15,7 @@ out/
 
 # Web app runtime data
 ui_servers.json
+ui_configs/
 
 # Claude Code
 .claude/
