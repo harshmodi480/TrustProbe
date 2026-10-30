@@ -1,8 +1,8 @@
 FROM python:3.11-slim
 
-# Install Docker CLI
+# Install Docker CLI and Node.js (needed for npm-sourced MCP servers in static mode)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl ca-certificates gnupg lsb-release \
+        curl ca-certificates gnupg lsb-release nodejs npm \
     && install -m 0755 -d /etc/apt/keyrings \
     && curl -fsSL https://download.docker.com/linux/debian/gpg \
        | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
@@ -23,8 +23,12 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy source
 COPY . .
 
-# Install trustprobe itself
-RUN pip install --no-cache-dir -e .
+# Install trustprobe itself + uv (provides uvx for PyPI-sourced MCP servers)
+RUN pip install --no-cache-dir -e . uv
+
+# Install demo server requirements so local-path scans work inside the container
+RUN find /app/demo_servers -name "requirements.txt" \
+    -exec pip install --no-cache-dir -r {} \; 2>/dev/null || true
 
 # Ensure output dirs exist
 RUN mkdir -p /app/out /app/ui_configs
