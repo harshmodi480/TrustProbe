@@ -598,6 +598,15 @@ body{background:var(--bg);color:var(--fg);font-family:'Segoe UI',system-ui,sans-
 <script>
 // ── state ──────────────────────────────────────────────────────────────────
 let servers = [], sel = null, scanId = null, evtSrc = null, running = false;
+let _csrfToken = '';
+
+async function _csrf() {
+  if (!_csrfToken) {
+    const r = await fetch('/api/csrf');
+    _csrfToken = (await r.json()).token;
+  }
+  return {'X-CSRF-Token': _csrfToken, 'Content-Type': 'application/json'};
+}
 
 const RC = {
   0: {label:'APPROVED',         cls:'vp-ok',   ring:'ok',   prog:'ok',   msg:'Scan complete — server approved'},
@@ -694,7 +703,7 @@ async function deleteServer(e, i) {
   e.stopPropagation();
   if (!confirm(`Delete "${servers[i].name}"?`)) return;
   if (running && sel === i) { toast('Stop the scan before deleting', 'err'); return; }
-  const r = await fetch(`/api/servers/${i}`, {method:'DELETE'});
+  const r = await fetch(`/api/servers/${i}`, {method:'DELETE', headers: await _csrf()});
   if (r.ok) {
     toast('Server deleted', 'ok');
     if (sel === i) {
@@ -731,7 +740,7 @@ function fillForm(name, type, source) {
 
 async function quickAdd(name, type, source) {
   const body = {name, source_type: type, source, mode: 'full'};
-  const r = await fetch('/api/servers', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  const r = await fetch('/api/servers', {method:'POST', headers: await _csrf(), body: JSON.stringify(body)});
   if (r.ok) {
     toast(`"${name}" added`, 'ok');
     await fetchServers();
@@ -806,7 +815,7 @@ async function submitServer() {
   }
   const server_args = document.getElementById('f-args').value.trim();
   const body = {name, source_type, source, mode: 'full', server_args};
-  const r = await fetch('/api/servers', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  const r = await fetch('/api/servers', {method:'POST', headers: await _csrf(), body: JSON.stringify(body)});
   if (r.ok) {
     toast(`"${name}" added`, 'ok');
     closeModal();
@@ -838,16 +847,28 @@ function setProgResult(rc) {
 
 async function startScan() {
   if (sel === null || running) return;
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  if (mode === 'static') {
+    const srv = servers[sel];
+    const ok = confirm(
+      'Static Scan Warning\n\n' +
+      'Static scan launches the MCP server process directly on this machine — outside any sandbox — ' +
+      'to enumerate its tools, resources, and prompts.\n\n' +
+      'Only scan servers you trust. A malicious server could execute arbitrary code during startup.\n\n' +
+      `Server: ${srv.name} (${srv.source_type}: ${srv.source})\n\n` +
+      'Continue?'
+    );
+    if (!ok) return;
+  }
   clearOut();
   showTab('out');
   setRunning(true);
   setStatus('●', 'Scanning…');
   log('$ trustprobe quick', 'l-info');
-  const mode = document.querySelector('input[name="mode"]:checked').value;
   // update mode tag in header
   const modeTag = document.getElementById('srv-mode-tag');
   if (modeTag) { modeTag.textContent = mode === 'full' ? 'Full Scan' : 'Static Scan'; modeTag.style.display = ''; }
-  const r = await fetch(`/api/scan/${sel}?mode=${mode}`, {method:'POST'});
+  const r = await fetch(`/api/scan/${sel}?mode=${mode}`, {method:'POST', headers: await _csrf()});
   if (!r.ok) {
     const e = await r.json();
     toast(e.detail || 'Failed to start scan', 'err');
@@ -862,7 +883,7 @@ async function startScan() {
 async function stopScan() {
   if (!scanId) return;
   try {
-    const r = await fetch(`/api/scan/${scanId}/stop`, {method:'POST'});
+    const r = await fetch(`/api/scan/${scanId}/stop`, {method:'POST', headers: await _csrf()});
     if (!r.ok) toast('Stop request failed — scan may still be running', 'err');
   } catch { toast('Could not reach the server to stop the scan', 'err'); }
   if (evtSrc) { evtSrc.close(); evtSrc = null; }

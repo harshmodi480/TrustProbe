@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import re
+import secrets
 import subprocess
 import sys
 import threading
@@ -11,7 +12,7 @@ import uuid
 from pathlib import Path
 from typing import AsyncIterator, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
@@ -24,6 +25,14 @@ OUT_DIR = Path(os.environ.get("OUT_DIR", ROOT / "out"))
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="TrustProbe")
+
+# CSRF token generated once per server process lifetime
+_CSRF_TOKEN = secrets.token_hex(32)
+
+
+def _require_csrf(x_csrf_token: str = Header(default="")) -> None:
+    if not secrets.compare_digest(x_csrf_token, _CSRF_TOKEN):
+        raise HTTPException(403, "Invalid or missing CSRF token")
 
 # scan_id -> {lines, proc, done, returncode}
 _scans: dict[str, dict] = {}
@@ -164,12 +173,17 @@ class ServerIn(BaseModel):
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
+@app.get("/api/csrf")
+def get_csrf():
+    return {"token": _CSRF_TOKEN}
+
+
 @app.get("/api/servers")
 def list_servers():
     return [{"id": i, **s} for i, s in enumerate(_load())]
 
 
-@app.post("/api/servers", status_code=201)
+@app.post("/api/servers", status_code=201, dependencies=[Depends(_require_csrf)])
 def add_server(data: ServerIn):
     servers = _load()
     if any(s["name"].lower() == data.name.lower() for s in servers):
@@ -180,7 +194,7 @@ def add_server(data: ServerIn):
     return {"id": len(servers) - 1, **entry}
 
 
-@app.delete("/api/servers/{sid}")
+@app.delete("/api/servers/{sid}", dependencies=[Depends(_require_csrf)])
 def delete_server(sid: int):
     servers = _load()
     if not (0 <= sid < len(servers)):
@@ -193,7 +207,7 @@ def delete_server(sid: int):
     return {"deleted": name}
 
 
-@app.post("/api/scan/{sid}")
+@app.post("/api/scan/{sid}", dependencies=[Depends(_require_csrf)])
 def start_scan(sid: int, mode: Optional[str] = None):
     import shutil
     servers = _load()
@@ -214,7 +228,7 @@ def start_scan(sid: int, mode: Optional[str] = None):
     return {"scan_id": _launch(cmd, sid)}
 
 
-@app.post("/api/scan/{scan_id}/stop")
+@app.post("/api/scan/{scan_id}/stop", dependencies=[Depends(_require_csrf)])
 def stop_scan(scan_id: str):
     entry = _scans.get(scan_id)
     if not entry:
