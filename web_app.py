@@ -163,6 +163,15 @@ class ServerIn(BaseModel):
             raise ValueError("Source is required")
         return v
 
+    @field_validator("server_args")
+    @classmethod
+    def _server_args(cls, v: str) -> str:
+        v = v.strip()
+        for part in v.split():
+            if part.startswith("-"):
+                raise ValueError("server_args may not contain option flags (values starting with '-')")
+        return v
+
     @field_validator("mode")
     @classmethod
     def _mode(cls, v: str) -> str:
@@ -311,8 +320,8 @@ def browse_directory():
         if not path:
             return {"path": None}
         return {"path": path}
-    except Exception as e:
-        raise HTTPException(400, f"Directory browser unavailable: {e}. Enter the path manually.")
+    except Exception:
+        raise HTTPException(400, "Directory browser unavailable in this environment. Enter the path manually.")
 
 
 @app.get("/report/{sid}")
