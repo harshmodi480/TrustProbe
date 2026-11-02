@@ -196,6 +196,21 @@ class ServerIn(BaseModel):
             raise ValueError("mode must be full or static")
         return v
 
+    from pydantic import model_validator
+
+    @model_validator(mode="after")
+    def _source_format(self) -> "ServerIn":
+        src = self.source
+        st = self.source_type
+        if st == "npm" and not re.match(r"^(@[\w.-]+/)?[\w.-]+", src):
+            raise ValueError("Invalid NPM package name")
+        if st == "pypi" and (src.startswith("@") or "/" in src):
+            raise ValueError(
+                "Invalid PyPI package name — PyPI names do not start with '@' or contain '/'. "
+                "Did you mean NPM Package?"
+            )
+        return self
+
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
