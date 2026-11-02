@@ -965,7 +965,7 @@ async function loadResults() {
       let msg = 'Failed to load results';
       try { const e = await r.json(); msg = e.detail || msg; } catch {}
       document.getElementById('empty-results').style.display = '';
-      document.getElementById('empty-results').innerHTML = `<div style="font-size:32px">⚠️</div><p style="color:var(--red)">${msg}</p>`;
+      document.getElementById('empty-results').innerHTML = `<div style="font-size:32px">⚠️</div><p style="color:var(--red)">${esc(msg)}</p>`;
       return;
     }
     let data;
@@ -1067,7 +1067,7 @@ function toast(msg, type='info') {
 }
 
 function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });

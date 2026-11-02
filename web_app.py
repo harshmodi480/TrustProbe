@@ -26,6 +26,23 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="TrustProbe")
 
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self';"
+    )
+    return response
+
+
 # CSRF token generated once per server process lifetime
 _CSRF_TOKEN = secrets.token_hex(32)
 
