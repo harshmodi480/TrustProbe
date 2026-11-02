@@ -723,9 +723,9 @@ function closeModal() { document.getElementById('overlay').classList.remove('ope
 
 function fillForm(name, type, source) {
   document.getElementById('f-name').value = name;
-  document.getElementById('f-src').value = source;
   document.getElementById('st-' + type).checked = true;
   onTypeChange();
+  document.getElementById('f-src').value = source;
   document.getElementById('f-name').focus();
 }
 
@@ -753,6 +753,7 @@ function onTypeChange() {
   const lbl = document.getElementById('src-lbl');
   const hint = document.getElementById('src-hint');
   const src = document.getElementById('f-src');
+  src.value = '';
   if (t === 'npm') {
     lbl.textContent = 'NPM Package Name *';
     hint.innerHTML = 'e.g. <code>@playwright/mcp</code> or <code>@modelcontextprotocol/server-filesystem</code>';
@@ -793,8 +794,14 @@ async function submitServer() {
   const source_type = document.querySelector('input[name="stype"]:checked').value;
   if (!name) { toast('Server name is required', 'err'); return; }
   if (!source) { toast('Source is required', 'err'); return; }
-  // Catch common mistake: npm package name entered as a local path
-  if (source_type === 'path' && /^@?[a-z0-9][\w.-]*\//.test(source)) {
+  // Validate source format matches the selected source type
+  if (source_type === 'npm' && !/^(@[\w.-]+\/)?[\w.-]+/.test(source)) {
+    toast('Invalid NPM package name. Expected format: package-name or @scope/package-name', 'err'); return;
+  }
+  if (source_type === 'pypi' && /^@|\//.test(source)) {
+    toast('Invalid PyPI package name — PyPI names do not start with "@" or contain "/". Did you mean NPM Package?', 'err'); return;
+  }
+  if (source_type === 'path' && /^@?[a-z0-9][\w.-]*\//.test(source) && !/^[A-Za-z]:[\\\/]|^\//.test(source)) {
     toast('This looks like an NPM package name. Change Source Type to "NPM Package".', 'err'); return;
   }
   const server_args = document.getElementById('f-args').value.trim();
